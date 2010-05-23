@@ -1,0 +1,35 @@
+[
+    {
+        type_id: "Note",
+        fields: [
+            {id: "Title", model: {type: "text"}, view: {editor: "single line"}, content: ""},
+            {id: "Body",  model: {type: "html"}, view: {editor: "multi line"},  content: ""}
+        ],
+        view: {
+            icon_src: "images/pencil.png"
+        },
+        implementation: "PlainDocument"
+    },
+    {
+        type_id: "Search Result",
+        fields: [
+            {id: "Search Term", model: {type: "text"}, view: {editor: "single line"}, content: ""},
+        ],
+        view: {
+            icon_src: "images/bucket.png"
+        },
+        implementation: "PlainDocument"
+    },
+	{
+		type_id: "Topic Type",
+        fields: [
+            {id: "type_id", model: {type: "text"}, view: {editor: "single line", label: "Type ID"}, content: ""},
+            {id: "Icon",    model: {type: "relation", related_type: "Icon"}, view: {editor: "iconpicker"}},
+            {id: "Fields",  model: {type: "field-definition"}}
+        ],
+        view: {
+            icon_src: "images/drawer.png"
+        },
+        implementation: "PlainDocument"
+    }
+]
