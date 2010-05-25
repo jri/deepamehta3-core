@@ -17,10 +17,13 @@ import java.util.logging.Logger;
 
 
 
-public abstract class DeepaMehtaPlugin implements BundleActivator {
+public class DeepaMehtaPlugin implements BundleActivator {
 
     private ServiceTracker    deepamehtaServiceTracker;
     private DeepaMehtaService deepamehtaService = null;
+
+    private ServiceTracker httpServiceTracker;
+    private HttpService httpService = null;
 
     private Logger logger = Logger.getLogger(getClass().getName());
 
@@ -37,12 +40,28 @@ public abstract class DeepaMehtaPlugin implements BundleActivator {
         //
         deepamehtaServiceTracker = createDeepamehtaServiceTracker(context);
         deepamehtaServiceTracker.open();
+        //
+        httpServiceTracker = createHttpServiceTracker(context);
+        httpServiceTracker.open();
     }
 
     public void stop(BundleContext context) {
         logger.info("Stopping DeepaMehta Plugin bundle \"" + context.getBundle().getHeaders().get("Bundle-Name") + "\"");
         //
         deepamehtaServiceTracker.close();
+        httpServiceTracker.close();
+    }
+
+
+
+    // *************
+    // *** Hooks ***
+    // *************
+
+
+
+    public String getClientPlugin() {
+        return null;
     }
 
 
@@ -76,19 +95,63 @@ public abstract class DeepaMehtaPlugin implements BundleActivator {
         };
     }
 
+    private ServiceTracker createHttpServiceTracker(BundleContext context) {
+        return new ServiceTracker(context, HttpService.class.getName(), null) {
+
+            @Override
+            public Object addingService(ServiceReference serviceRef) {
+                logger.info("Adding HTTP service");
+                httpService = (HttpService) super.addingService(serviceRef);
+                registerResources(context);
+                return httpService;
+            }
+
+            @Override
+            public void removedService(ServiceReference ref, Object service) {
+                if (service == httpService) {
+                    logger.info("Removing HTTP service");
+                    unregisterResources(context);
+                    httpService = null;
+                }
+                super.removedService(ref, service);
+            }
+        };
+    }
+
     // ---
 
     private void registerPlugin(BundleContext context) {
         String pluginId = context.getBundle().getSymbolicName();
         String pluginClass = (String) context.getBundle().getHeaders().get("Bundle-Activator");
-        logger.info("Registering DeepaMehta Plugin " + pluginClass + " (" + pluginId + ")");
+        logger.info("Registering plugin " + pluginId + " (" + pluginClass + ")");
         deepamehtaService.registerPlugin(pluginId, this);
     }
 
     private void unregisterPlugin(BundleContext context) {
         String pluginId = context.getBundle().getSymbolicName();
         String pluginClass = (String) context.getBundle().getHeaders().get("Bundle-Activator");
-        logger.info("Unregistering DeepaMehta Plugin " + pluginClass + " (" + pluginId + ")");
+        logger.info("Unregistering plugin " + pluginId + " (" + pluginClass + ")");
         deepamehtaService.unregisterPlugin(pluginId);
+    }
+
+    // ---
+
+    private void registerResources(BundleContext context) {
+        String pluginId = context.getBundle().getSymbolicName();
+        logger.info("Registering web resources of plugin " + pluginId);
+        try {
+            // Note: to map the bundle root, acording to OSGi API the resource name "/" is to be used.
+            // This doesn't work: java.lang.IllegalArgumentException: Malformed resource name [/]
+            // Using "" instead works. IMO this is an error in the "Apache Felix Http Jetty" bundle.
+            httpService.registerResources("/" + pluginId, "", null);
+        } catch (NamespaceException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    private void unregisterResources(BundleContext context) {
+        String pluginId = context.getBundle().getSymbolicName();
+        logger.info("Unregistering web resources of plugin " + pluginId);
+        httpService.unregister("/" + pluginId);
     }
 }

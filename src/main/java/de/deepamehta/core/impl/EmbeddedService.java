@@ -29,6 +29,7 @@ import java.util.HashMap;
 import java.util.Hashtable;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import java.util.logging.Logger;
 
@@ -236,6 +237,14 @@ public class EmbeddedService implements DeepaMehtaService {
         if (plugins.remove(pluginId) == null) {
             throw new RuntimeException("Plugin " + pluginId + " is not registered");
         }
+    }
+
+    public Set<String> getPluginIds() {
+        return plugins.keySet();
+    }
+
+    public DeepaMehtaPlugin getPlugin(String pluginId) {
+        return plugins.get(pluginId);
     }
 
     // --- Misc ---

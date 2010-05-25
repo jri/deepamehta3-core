@@ -7,6 +7,7 @@ import de.deepamehta.core.plugin.DeepaMehtaPlugin;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 
 
@@ -50,6 +51,10 @@ public interface DeepaMehtaService {
     public void registerPlugin(String pluginId, DeepaMehtaPlugin plugin);
 
     public void unregisterPlugin(String pluginId);
+
+    public Set<String> getPluginIds();
+
+    public DeepaMehtaPlugin getPlugin(String pluginId);
 
     // --- Misc ---
 
