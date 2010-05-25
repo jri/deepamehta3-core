@@ -55,8 +55,9 @@
                 <configuration>
                     <instructions>
                         <Export-Package>
-                            de.deepamehta.core.service,
                             de.deepamehta.core.model,
+                            de.deepamehta.core.service,
+                            de.deepamehta.core.plugin,
                             de.deepamehta.core.util
                         </Export-Package>
                         <Private-Package>

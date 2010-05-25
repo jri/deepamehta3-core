@@ -21,6 +21,10 @@ public class Topic {
         this.properties = properties;
     }
 
+    public void setProperty(String key, Object value) {
+        properties.put(key, value);
+    }
+
     public JSONObject toJSON() throws JSONException {
         JSONObject o = new JSONObject();
         o.put("id", id);

@@ -1,12 +1,15 @@
 package de.deepamehta.core.impl;
 
-import de.deepamehta.core.service.DeepaMehtaService;
 import de.deepamehta.core.model.Topic;
 import de.deepamehta.core.model.TopicType;
 import de.deepamehta.core.model.Relation;
+import de.deepamehta.core.plugin.DeepaMehtaPlugin;
+import de.deepamehta.core.service.DeepaMehtaService;
 import de.deepamehta.core.storage.Storage;
 import de.deepamehta.core.storage.Transaction;
 import de.deepamehta.core.storage.neo4j.Neo4jStorage;
+
+import org.osgi.framework.Bundle;
 
 import org.codehaus.jettison.json.JSONObject;
 import org.codehaus.jettison.json.JSONArray;
@@ -17,12 +20,16 @@ import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.IOException;
 
+import java.lang.reflect.Method;
+import java.lang.reflect.InvocationTargetException;
+
 import java.util.ArrayList;
 import java.util.Dictionary;
 import java.util.HashMap;
 import java.util.Hashtable;
 import java.util.List;
 import java.util.Map;
+
 import java.util.logging.Logger;
 
 
@@ -30,6 +37,7 @@ import java.util.logging.Logger;
 public class EmbeddedService implements DeepaMehtaService {
 
     private Map<String, TopicType> topicTypes = new HashMap();
+    private Map<String, DeepaMehtaPlugin> plugins = new HashMap();
 
     private Storage storage;
 
@@ -105,8 +113,11 @@ public class EmbeddedService implements DeepaMehtaService {
         Topic topic = null;
         Transaction tx = storage.beginTx();
         try {
-            topic = storage.createTopic(typeId, properties);
-            tx.success();   
+            Topic t = new Topic(-1, typeId, null, properties);
+            triggerHook("preCreateHook", t);
+            //
+            topic = storage.createTopic(t.typeId, t.properties);
+            tx.success();
         } catch (Throwable e) {
             e.printStackTrace();
         } finally {
@@ -215,6 +226,18 @@ public class EmbeddedService implements DeepaMehtaService {
         return storage.topicTypeExists(typeId);
     }
 
+    // --- Plugins ---
+
+    public void registerPlugin(String pluginId, DeepaMehtaPlugin plugin) {
+        plugins.put(pluginId, plugin);
+    }
+
+    public void unregisterPlugin(String pluginId) {
+        if (plugins.remove(pluginId) == null) {
+            throw new RuntimeException("Plugin " + pluginId + " is not registered");
+        }
+    }
+
     // --- Misc ---
 
     public void shutdown() {
@@ -228,6 +251,22 @@ public class EmbeddedService implements DeepaMehtaService {
     // ************************
 
 
+
+    // --- Plugins ---
+
+    private void triggerHook(String hookName, Object... args) throws NoSuchMethodException,
+                                                                     IllegalAccessException,
+                                                                     InvocationTargetException {
+        Class[] argClasses = new Class[args.length];
+        for (int i = 0; i < args.length; i++) {
+            argClasses[i] = args[i].getClass();
+        }
+        //
+        for (DeepaMehtaPlugin plugin : plugins.values()) {
+            Method hook = plugin.getClass().getMethod(hookName, argClasses);
+            hook.invoke(plugin, args);
+        }
+    }
 
     // --- DB ---
 

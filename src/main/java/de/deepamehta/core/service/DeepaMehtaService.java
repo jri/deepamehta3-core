@@ -3,6 +3,7 @@ package de.deepamehta.core.service;
 import de.deepamehta.core.model.Topic;
 import de.deepamehta.core.model.TopicType;
 import de.deepamehta.core.model.Relation;
+import de.deepamehta.core.plugin.DeepaMehtaPlugin;
 
 import java.util.List;
 import java.util.Map;
@@ -43,6 +44,12 @@ public interface DeepaMehtaService {
     public void createTopicType(Map properties, List dataFields);
 
     public boolean topicTypeExists(String typeId);
+
+    // --- Plugins ---
+
+    public void registerPlugin(String pluginId, DeepaMehtaPlugin plugin);
+
+    public void unregisterPlugin(String pluginId);
 
     // --- Misc ---
 

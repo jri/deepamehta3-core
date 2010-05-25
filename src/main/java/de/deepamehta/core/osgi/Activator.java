@@ -31,7 +31,7 @@ public class Activator implements BundleActivator {
         logger.info("Starting DeepaMehta Core bundle");
         service = new EmbeddedService();
         //
-        logger.info("Registering DeepaMehta service");
+        logger.info("Registering DeepaMehta Core service");
         context.registerService(DeepaMehtaService.class.getName(), service, null);
     }
 
