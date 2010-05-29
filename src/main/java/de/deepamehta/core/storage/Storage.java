@@ -1,5 +1,6 @@
 package de.deepamehta.core.storage;
 
+import de.deepamehta.core.model.DataField;
 import de.deepamehta.core.model.Topic;
 import de.deepamehta.core.model.Relation;
 
@@ -13,6 +14,8 @@ public interface Storage {
     // --- Topics ---
 
     public Topic getTopic(long id);
+
+    public Topic getTopic(String key, Object value);
 
     public List<Topic> getRelatedTopics(long topicId, List<String> excludeRelTypes);
 
@@ -34,7 +37,9 @@ public interface Storage {
 
     // --- Types ---
 
-    public void createTopicType(Map<String, Object> properties, List<Map> dataFields);
+    public void createTopicType(Map<String, Object> properties, List<DataField> dataFields);
+
+    public void addDataField(String typeId, DataField dataField);
 
     public boolean topicTypeExists(String typeId);
 

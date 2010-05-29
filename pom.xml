@@ -63,6 +63,10 @@
                         <Private-Package>
                             de.deepamehta.core.*
                         </Private-Package>
+                        <Import-Package><!-- FIXME: remove -->
+                            *,
+                            de.deepamehta.plugins.time.migrations
+                        </Import-Package>
                         <Bundle-Activator>de.deepamehta.core.osgi.Activator</Bundle-Activator>
                     </instructions>
                 </configuration>

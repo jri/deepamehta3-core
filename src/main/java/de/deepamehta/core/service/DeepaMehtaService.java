@@ -1,10 +1,12 @@
 package de.deepamehta.core.service;
 
+import de.deepamehta.core.model.DataField;
 import de.deepamehta.core.model.Topic;
 import de.deepamehta.core.model.TopicType;
 import de.deepamehta.core.model.Relation;
 import de.deepamehta.core.plugin.DeepaMehtaPlugin;
 
+import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -16,6 +18,8 @@ public interface DeepaMehtaService {
     // --- Topics ---
 
     public Topic getTopic(long id);
+
+    public Topic getTopic(String key, Object value);
 
     public List<Topic> getRelatedTopics(long topicId, List<String> excludeRelTypes);
 
@@ -42,7 +46,11 @@ public interface DeepaMehtaService {
 
     // --- Types ---
 
+    public Collection<TopicType> getTopicTypes();
+
     public void createTopicType(Map properties, List dataFields);
+
+    public void addDataField(String typeId, DataField dataField);
 
     public boolean topicTypeExists(String typeId);
 
@@ -55,6 +63,8 @@ public interface DeepaMehtaService {
     public Set<String> getPluginIds();
 
     public DeepaMehtaPlugin getPlugin(String pluginId);
+
+    public void runMigration(DeepaMehtaPlugin plugin, int migrationNr);
 
     // --- Misc ---
 

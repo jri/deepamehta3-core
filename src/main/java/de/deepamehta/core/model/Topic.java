@@ -21,9 +21,20 @@ public class Topic {
         this.properties = properties;
     }
 
+    // ---
+
+    public Object getProperty(String key) {
+        if (properties == null) {
+            throw new RuntimeException("Properties of topic " + this + " are not initialized");
+        }
+        return properties.get(key);
+    }
+
     public void setProperty(String key, Object value) {
         properties.put(key, value);
     }
+
+    // ---
 
     public JSONObject toJSON() throws JSONException {
         JSONObject o = new JSONObject();
@@ -32,5 +43,10 @@ public class Topic {
         o.put("label", label);
         o.put("properties", properties);
         return o;
+    }
+
+    @Override
+    public String toString() {
+        return id + " (typeId=\"" + typeId + "\", label=\"" + label + "\")";
     }
 }

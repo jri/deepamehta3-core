@@ -1,5 +1,7 @@
 package de.deepamehta.core.storage.neo4j;
 
+import de.deepamehta.core.impl.TypeCache;
+import de.deepamehta.core.model.DataField;
 import de.deepamehta.core.model.Topic;
 import de.deepamehta.core.model.TopicType;
 import de.deepamehta.core.model.Relation;
@@ -38,19 +40,19 @@ public class Neo4jStorage implements Storage {
     private final IndexService index;
     private final LuceneFulltextQueryIndexService fulltextIndex;
     //
-    Map<String, TopicType> topicTypes;
+    TypeCache typeCache;
 
     private enum RelType implements RelationshipType {
         TOPIC_TYPE, DATA_FIELD, INSTANCE,
         RELATION, SEARCH_RESULT
     }
 
-    public Neo4jStorage(String dbPath, Map topicTypes) {
+    public Neo4jStorage(String dbPath, TypeCache typeCache) {
         logger.info("Creating DB and indexing services");
         graphDb = new EmbeddedGraphDatabase(dbPath);
         index = new LuceneIndexService(graphDb);
         fulltextIndex = new LuceneFulltextQueryIndexService(graphDb);
-        this.topicTypes = topicTypes;
+        this.typeCache = typeCache;
     }
 
 
@@ -67,7 +69,16 @@ public class Neo4jStorage implements Storage {
     public Topic getTopic(long id) {
         logger.info("Getting node " + id);
         Node node = graphDb.getNodeById(id);
-        return new Topic(id, getTypeId(node), null, getProperties(node));     // FIXME: label remains uninitialized
+        // FIXME: label remains uninitialized
+        return new Topic(id, getTypeId(node), null, getProperties(node));
+    }
+
+    @Override
+    public Topic getTopic(String key, Object value) {
+        logger.info("Getting node with " + key + "=" + value);
+        Node node = index.getSingleNode(key, value);
+        // FIXME: type and label remain uninitialized
+        return node != null ? new Topic(node.getId(), null, null, getProperties(node)) : null;
     }
 
     @Override
@@ -100,7 +111,7 @@ public class Neo4jStorage implements Storage {
         Node node = graphDb.createNode();
         logger.info("Creating node, ID=" + node.getId());
         setNodeType(node, typeId);
-        setProperties(node, properties);
+        setProperties(node, properties, typeId);
         return new Topic(node.getId(), typeId, null, properties);  // FIXME: label remains uninitialized
     }
 
@@ -165,24 +176,36 @@ public class Neo4jStorage implements Storage {
     // --- Types ---
 
     @Override
-    public void createTopicType(Map<String, Object> properties, List<Map> dataFields) {
+    public void createTopicType(Map<String, Object> properties, List<DataField> dataFields) {
         Node type = graphDb.createNode();
-        Object typeId = properties.get("type_id");
+        String typeId = (String) properties.get("type_id");
         logger.info("Creating topic type \"" + typeId + "\", ID=" + type.getId());
-        setProperties(type, properties);
+        setProperties(type, properties, "Topic Type");
         index.index(type, "type_id", typeId);
         graphDb.getReferenceNode().createRelationshipTo(type, RelType.TOPIC_TYPE);
         //
-        for (Map dataField : dataFields) {
-            Node dataFieldNode = graphDb.createNode();
-            setProperties(dataFieldNode, dataField);
-            type.createRelationshipTo(dataFieldNode, RelType.DATA_FIELD);
+        for (DataField dataField : dataFields) {
+            addDataField(typeId, dataField);
         }
     }
 
     @Override
+    public void addDataField(String typeId, DataField dataField) {
+        Map properties = new HashMap();
+        properties.put("id", dataField.id);
+        properties.put("data_type", dataField.dataType);
+        properties.put("editor", dataField.editor);
+        properties.put("index_mode", dataField.indexMode);
+        //
+        Node dataFieldNode = graphDb.createNode();
+        logger.info("Creating data field \"" + dataField.id + "\", ID=" + dataFieldNode.getId());
+        setProperties(dataFieldNode, properties, "Data Field");
+        getTypeNode(typeId).createRelationshipTo(dataFieldNode, RelType.DATA_FIELD);
+    }
+
+    @Override
     public boolean topicTypeExists(String typeId) {
-        return getNodeType(typeId) != null;
+        return getTypeNode(typeId) != null;
     }
 
     // --- Misc ---
@@ -212,14 +235,14 @@ public class Neo4jStorage implements Storage {
 
     private Topic buildTopic(Node node) {
         String typeId = getTypeId(node);
-        // label
+        // initialize label
         String label;
-        TopicType topicType = topicTypes.get(typeId);
-        String typeLabelField = topicType.getProperty("type_label_field");
+        TopicType topicType = typeCache.getTopicType(typeId);
+        String typeLabelField = topicType.getProperty("label_field");
         if (typeLabelField != null) {
             throw new RuntimeException("not yet implemented");
         } else {
-            String fieldId = topicType.getDataField(0).get("field_id");
+            String fieldId = topicType.getDataField(0).id;
             label = (String) node.getProperty(fieldId);
         }
         //
@@ -227,10 +250,15 @@ public class Neo4jStorage implements Storage {
     }
 
     private String getTypeId(Node node) {
-        //
-        if (node.getProperty("type_id", null) != null) {        // FIXME: recognize a type by incoming TOPIC_TYPE relation
+        /* Bootstrap: meta-types must be detected manually
+        // FIXME: perhaps it is better to model meta-types explicitly
+        if (node.getProperty("type_id", null) != null) {
+            // FIXME: a more elaborated criteria is required, e.g. an incoming TOPIC_TYPE relation
             return "Topic Type";
-        }
+        } else if (node.getProperty("data_type", null) != null) {
+            // FIXME: a more elaborated criteria is required, e.g. an incoming DATA_FIELD relation
+            return "Data Field";
+        } */
         //
         return (String) getNodeType(node).getProperty("type_id");
     }
@@ -246,22 +274,48 @@ public class Neo4jStorage implements Storage {
     }
 
     private void setProperties(PropertyContainer container, Map<String, Object> properties) {
+        String typeId = null;
+        if (container instanceof Node) {
+            typeId = getTypeId((Node) container);
+        }
+        setProperties(container, properties, typeId);
+    }
+
+    private void setProperties(PropertyContainer container, Map<String, Object> properties, String typeId) {
         if (properties == null) {
             throw new NullPointerException("setProperties() called with properties=null");
         }
         for (String key : properties.keySet()) {
             Object value = properties.get(key);
+            // update DB
             container.setProperty(key, value);
-            // fulltext index
-            if (container instanceof Node) {
+            // update index
+            indexProperty(container, key, value, typeId);
+        }
+    }
+
+    private void indexProperty(PropertyContainer container, String key, Object value, String typeId) {
+        // Note 1: we only index node properties. Neo4j can't index relationship properties.
+        // Note 2: we only index instance nodes. Meta nodes (types and fields) are responsible for indexing themself.
+        if (container instanceof Node && !typeId.equals("Topic Type") && !typeId.equals("Data Field")) {
+            DataField dataField = typeCache.getTopicType(typeId).getDataField(key);
+            String indexMode = dataField.indexMode;
+            if ("off".equals(indexMode)) {
+                return;
+            } else if (indexMode == null || indexMode.equals("fulltext")) {
                 fulltextIndex.index((Node) container, "default", value);
+            } else if (indexMode.equals("id")) {
+                index.index((Node) container, key, value);  // FIXME: include topic type in index key
+            } else {
+                throw new RuntimeException("Data field \"" + key + "\" of type definition \"" +
+                    typeId + "\" has unexpectd index mode: \"" + indexMode + "\"");
             }
         }
     }
 
     // --- Types ---
 
-    private Node getNodeType(String typeId) {
+    private Node getTypeNode(String typeId) {
         return index.getSingleNode("type_id", typeId);
     }
 
@@ -270,14 +324,24 @@ public class Neo4jStorage implements Storage {
             StopEvaluator.DEPTH_ONE, ReturnableEvaluator.ALL_BUT_START_NODE,
             RelType.INSTANCE, Direction.INCOMING);
         Iterator<Node> i = traverser.iterator();
-        assert i.hasNext() : node;
+        // error check 1
+        if (!i.hasNext()) {
+            throw new RuntimeException("Type of " + node + " is unknown " +
+                "(there is no incoming INSTANCE relationship)");
+        }
+        //
         Node type = i.next();
-        assert !i.hasNext() : node;
+        // error check 2
+        if (i.hasNext()) {
+            throw new RuntimeException("Type of " + node + " is ambiguous " +
+                "(there are more than one incoming INSTANCE relationships)");
+        }
+        //
         return type;
     }
 
     private void setNodeType(Node node, String typeId) {
-        Node type = getNodeType(typeId);
+        Node type = getTypeNode(typeId);
         assert type != null : "Topic type \"" + typeId + "\" not found in DB";
         type.createRelationshipTo(node, RelType.INSTANCE);
     }

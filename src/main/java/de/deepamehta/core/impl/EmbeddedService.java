@@ -1,9 +1,11 @@
 package de.deepamehta.core.impl;
 
+import de.deepamehta.core.model.DataField;
 import de.deepamehta.core.model.Topic;
 import de.deepamehta.core.model.TopicType;
 import de.deepamehta.core.model.Relation;
 import de.deepamehta.core.plugin.DeepaMehtaPlugin;
+import de.deepamehta.core.plugin.Migration;
 import de.deepamehta.core.service.DeepaMehtaService;
 import de.deepamehta.core.storage.Storage;
 import de.deepamehta.core.storage.Transaction;
@@ -24,6 +26,7 @@ import java.lang.reflect.Method;
 import java.lang.reflect.InvocationTargetException;
 
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Dictionary;
 import java.util.HashMap;
 import java.util.Hashtable;
@@ -37,7 +40,7 @@ import java.util.logging.Logger;
 
 public class EmbeddedService implements DeepaMehtaService {
 
-    private Map<String, TopicType> topicTypes = new HashMap();
+    private TypeCache typeCache = new TypeCache();
     private Map<String, DeepaMehtaPlugin> plugins = new HashMap();
 
     private Storage storage;
@@ -46,7 +49,12 @@ public class EmbeddedService implements DeepaMehtaService {
 
     public EmbeddedService() {
         openDB();
-        init();
+        try {
+            init();
+        } catch (Throwable e) {
+            e.printStackTrace();
+            closeDB();
+        }
     }
 
 
@@ -67,6 +75,22 @@ public class EmbeddedService implements DeepaMehtaService {
             tx.success();   
         } catch (Throwable e) {
             e.printStackTrace();
+            logger.warning("ROLLBACK!");
+        } finally {
+            tx.finish();
+            return topic;
+        }
+    }
+
+    public Topic getTopic(String key, Object value) {
+        Topic topic = null;
+        Transaction tx = storage.beginTx();
+        try {
+            topic = storage.getTopic(key, value);
+            tx.success();   
+        } catch (Throwable e) {
+            e.printStackTrace();
+            logger.warning("ROLLBACK!");
         } finally {
             tx.finish();
             return topic;
@@ -81,6 +105,7 @@ public class EmbeddedService implements DeepaMehtaService {
             tx.success();   
         } catch (Throwable e) {
             e.printStackTrace();
+            logger.warning("ROLLBACK!");
         } finally {
             tx.finish();
             return topics;
@@ -104,6 +129,7 @@ public class EmbeddedService implements DeepaMehtaService {
             tx.success();   
         } catch (Throwable e) {
             e.printStackTrace();
+            logger.warning("ROLLBACK!");
         } finally {
             tx.finish();
             return resultTopic;
@@ -121,6 +147,7 @@ public class EmbeddedService implements DeepaMehtaService {
             tx.success();
         } catch (Throwable e) {
             e.printStackTrace();
+            logger.warning("ROLLBACK!");
         } finally {
             tx.finish();
             return topic;
@@ -134,6 +161,7 @@ public class EmbeddedService implements DeepaMehtaService {
             tx.success();   
         } catch (Throwable e) {
             e.printStackTrace();
+            logger.warning("ROLLBACK!");
         } finally {
             tx.finish();
         }
@@ -146,6 +174,7 @@ public class EmbeddedService implements DeepaMehtaService {
             tx.success();
         } catch (Throwable e) {
             e.printStackTrace();
+            logger.warning("ROLLBACK!");
         } finally {
             tx.finish();
         }
@@ -166,6 +195,7 @@ public class EmbeddedService implements DeepaMehtaService {
             tx.success();
         } catch (Throwable e) {
             e.printStackTrace();
+            logger.warning("ROLLBACK!");
         } finally {
             tx.finish();
             return relation;
@@ -180,6 +210,7 @@ public class EmbeddedService implements DeepaMehtaService {
             tx.success();
         } catch (Throwable e) {
             e.printStackTrace();
+            logger.warning("ROLLBACK!");
         } finally {
             tx.finish();
             return relation;
@@ -193,6 +224,7 @@ public class EmbeddedService implements DeepaMehtaService {
             tx.success();
         } catch (Throwable e) {
             e.printStackTrace();
+            logger.warning("ROLLBACK!");
         } finally {
             tx.finish();
         }
@@ -200,23 +232,45 @@ public class EmbeddedService implements DeepaMehtaService {
 
     // --- Types ---
 
+    public Collection<TopicType> getTopicTypes() {
+        return typeCache.getTopicTypes();
+    }
+
     public void createTopicType(Map properties, List dataFields) {
         Transaction tx = storage.beginTx();
         try {
             TopicType topicType = new TopicType(properties, dataFields);
             String typeId = topicType.getProperty("type_id");
-            // store in DB
+            // update DB
             if (!topicTypeExists(typeId)) {
                 storage.createTopicType(properties, dataFields);
             } else {
                 logger.info("No need to create topic type \"" + typeId + "\" in DB (already exists)");
             }
-            // cache in memory
-            topicTypes.put(typeId, topicType);
+            // update cache
+            typeCache.addTopicType(topicType);
             //
             tx.success();
         } catch (Throwable e) {
             e.printStackTrace();
+            logger.warning("ROLLBACK!");
+        } finally {
+            tx.finish();
+        }
+    }
+
+    public void addDataField(String typeId, DataField dataField) {
+        Transaction tx = storage.beginTx();
+        try {
+            // update DB
+            storage.addDataField(typeId, dataField);
+            // update cache
+            typeCache.getTopicType(typeId).addDataField(dataField);
+            //
+            tx.success();
+        } catch (Throwable e) {
+            e.printStackTrace();
+            logger.warning("ROLLBACK!");
         } finally {
             tx.finish();
         }
@@ -245,6 +299,28 @@ public class EmbeddedService implements DeepaMehtaService {
 
     public DeepaMehtaPlugin getPlugin(String pluginId) {
         return plugins.get(pluginId);
+    }
+
+    public void runMigration(DeepaMehtaPlugin plugin, int migrationNr) {
+        Transaction tx = storage.beginTx();
+        try {
+            String migrationClassName = plugin.getClass().getPackage().getName() + ".migrations.Migration" + migrationNr;
+            logger.info("Running migration " + migrationClassName);
+            Class migrationClass = Class.forName(migrationClassName);
+            Migration migration = (Migration) migrationClass.newInstance();
+            migration.setDeepaMehtaService(this);
+            migration.run();
+            // update DB model version
+            logger.info("Migration complete - Updating DB model version (" + migrationNr + ")");
+            updatePluginDbModelVersion(plugin, migrationNr);
+            //
+            tx.success();
+        } catch (Throwable e) {
+            e.printStackTrace();
+            logger.warning("ROLLBACK!");
+        } finally {
+            tx.finish();
+        }
     }
 
     // --- Misc ---
@@ -277,10 +353,16 @@ public class EmbeddedService implements DeepaMehtaService {
         }
     }
 
+    private void updatePluginDbModelVersion(DeepaMehtaPlugin plugin, int dbModelVersion) {
+        Map properties = new HashMap();
+        properties.put("db_model_version", dbModelVersion);
+        setTopicProperties(plugin.getPluginTopic().id, properties);
+    }
+
     // --- DB ---
 
     private void openDB() {
-        storage = new Neo4jStorage("/Users/jri/var/db/deepamehta-db-neo4j", topicTypes);
+        storage = new Neo4jStorage("/Users/jri/var/db/deepamehta-db-neo4j", typeCache);
     }
 
     private void closeDB() {
@@ -303,46 +385,20 @@ public class EmbeddedService implements DeepaMehtaService {
             }
             createTypes(json.toString());
         } catch (Throwable e) {
-            e.printStackTrace();
-        }
-    }
-
-    private void createTypes(String json) {
-        try {
-            JSONArray types = new JSONArray(json);
-            for (int i = 0; i < types.length(); i++) {
-                JSONObject type = types.getJSONObject(i);
-                createType(type);
-            }
-        } catch (Throwable e) {
             throw new RuntimeException("ERROR while processing /types.json", e);
         }
     }
 
-    private void createType(JSONObject type) throws JSONException {
-        //
-        JSONObject view = type.getJSONObject("view");
-        Map properties = new HashMap();
-        properties.put("type_id", type.getString("type_id"));
-        properties.put("type_icon_src", view.getString("icon_src"));
-        if (view.has("label_field")) {
-            properties.put("type_label_field", view.getString("label_field"));
+    private void createTypes(String json) throws JSONException {
+        JSONArray types = new JSONArray(json);
+        for (int i = 0; i < types.length(); i++) {
+            TopicType topicType = new TopicType(types.getJSONObject(i));
+            /* Bootstrap: meta-types must be in the cache before creating types
+            if (topicType.getProperty("type_id").equals("Topic Type")) {
+                typeCache.addTopicType(topicType);
+            } */
+            //
+            createTopicType(topicType.properties, topicType.dataFields);
         }
-        properties.put("type_implementation", type.getString("implementation"));
-        //
-        List dataFields = new ArrayList();
-        JSONArray fieldDefs = type.getJSONArray("fields");
-        for (int i = 0; i < fieldDefs.length(); i++) {
-            Map dataField = new HashMap();
-            JSONObject fieldDef = fieldDefs.getJSONObject(i);
-            dataField.put("field_id", fieldDef.getString("id"));
-            dataField.put("field_datatype", fieldDef.getJSONObject("model").getString("type"));
-            if (fieldDef.has("view")) {
-                dataField.put("field_editor", fieldDef.getJSONObject("view").getString("editor"));
-            }
-            dataFields.add(dataField);
-        }
-        //
-        createTopicType(properties, dataFields);
     }
 }

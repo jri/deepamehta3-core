@@ -1,5 +1,6 @@
 package de.deepamehta.core.plugin;
 
+import de.deepamehta.core.model.Topic;
 import de.deepamehta.core.service.DeepaMehtaService;
 
 import org.osgi.framework.Bundle;
@@ -13,11 +14,19 @@ import org.osgi.service.http.NamespaceException;
 import org.osgi.util.tracker.ServiceTracker;
 
 import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.logging.Logger;
 
 
 
 public class DeepaMehtaPlugin implements BundleActivator {
+
+    private String pluginId;
+    private String pluginName;
+    private String pluginClass;
+    private Bundle pluginBundle;
+    private Topic  pluginTopic;
 
     private ServiceTracker    deepamehtaServiceTracker;
     private DeepaMehtaService deepamehtaService = null;
@@ -29,6 +38,18 @@ public class DeepaMehtaPlugin implements BundleActivator {
 
 
 
+    // ****************
+    // *** Accessor ***
+    // ****************
+
+
+
+    public Topic getPluginTopic() {
+        return pluginTopic;
+    }
+
+
+
     // **************************************
     // *** BundleActivator Implementation ***
     // **************************************
@@ -36,7 +57,12 @@ public class DeepaMehtaPlugin implements BundleActivator {
 
 
     public void start(BundleContext context) {
-        logger.info("Starting DeepaMehta Plugin bundle \"" + context.getBundle().getHeaders().get("Bundle-Name") + "\"");
+        pluginBundle = context.getBundle();
+        pluginId = pluginBundle.getSymbolicName();
+        pluginName = (String) pluginBundle.getHeaders().get("Bundle-Name");
+        pluginClass = (String) pluginBundle.getHeaders().get("Bundle-Activator");
+        //
+        logger.info("Starting DeepaMehta Plugin bundle \"" + pluginName + "\"");
         //
         deepamehtaServiceTracker = createDeepamehtaServiceTracker(context);
         deepamehtaServiceTracker.open();
@@ -46,7 +72,7 @@ public class DeepaMehtaPlugin implements BundleActivator {
     }
 
     public void stop(BundleContext context) {
-        logger.info("Stopping DeepaMehta Plugin bundle \"" + context.getBundle().getHeaders().get("Bundle-Name") + "\"");
+        logger.info("Stopping DeepaMehta Plugin bundle \"" + pluginName + "\"");
         //
         deepamehtaServiceTracker.close();
         httpServiceTracker.close();
@@ -60,8 +86,18 @@ public class DeepaMehtaPlugin implements BundleActivator {
 
 
 
+    public int getCodeModelVersion() {
+        return 0;
+    }
+
     public String getClientPlugin() {
         return null;
+    }
+
+    public void preCreateHook(Topic topic) {
+    }
+
+    public void preUpdateHook(Topic topic) {
     }
 
 
@@ -79,7 +115,9 @@ public class DeepaMehtaPlugin implements BundleActivator {
             public Object addingService(ServiceReference serviceRef) {
                 logger.info("Adding DeepaMehta Core service");
                 deepamehtaService = (DeepaMehtaService) super.addingService(serviceRef);
-                registerPlugin(context);
+                initPluginTopic();
+                runMigrations();
+                registerPlugin();
                 return deepamehtaService;
             }
 
@@ -87,7 +125,7 @@ public class DeepaMehtaPlugin implements BundleActivator {
             public void removedService(ServiceReference ref, Object service) {
                 if (service == deepamehtaService) {
                     logger.info("Removing DeepaMehta Core service");
-                    unregisterPlugin(context);
+                    unregisterPlugin();
                     deepamehtaService = null;
                 }
                 super.removedService(ref, service);
@@ -102,7 +140,7 @@ public class DeepaMehtaPlugin implements BundleActivator {
             public Object addingService(ServiceReference serviceRef) {
                 logger.info("Adding HTTP service");
                 httpService = (HttpService) super.addingService(serviceRef);
-                registerResources(context);
+                registerResources();
                 return httpService;
             }
 
@@ -110,7 +148,7 @@ public class DeepaMehtaPlugin implements BundleActivator {
             public void removedService(ServiceReference ref, Object service) {
                 if (service == httpService) {
                     logger.info("Removing HTTP service");
-                    unregisterResources(context);
+                    unregisterResources();
                     httpService = null;
                 }
                 super.removedService(ref, service);
@@ -120,27 +158,22 @@ public class DeepaMehtaPlugin implements BundleActivator {
 
     // ---
 
-    private void registerPlugin(BundleContext context) {
-        String pluginId = context.getBundle().getSymbolicName();
-        String pluginClass = (String) context.getBundle().getHeaders().get("Bundle-Activator");
-        logger.info("Registering plugin " + pluginId + " (" + pluginClass + ")");
+    private void registerPlugin() {
+        logger.info("Registering plugin \"" + pluginId + "\" (" + pluginClass + ")");
         deepamehtaService.registerPlugin(pluginId, this);
     }
 
-    private void unregisterPlugin(BundleContext context) {
-        String pluginId = context.getBundle().getSymbolicName();
-        String pluginClass = (String) context.getBundle().getHeaders().get("Bundle-Activator");
-        logger.info("Unregistering plugin " + pluginId + " (" + pluginClass + ")");
+    private void unregisterPlugin() {
+        logger.info("Unregistering plugin \"" + pluginId + "\" (" + pluginClass + ")");
         deepamehtaService.unregisterPlugin(pluginId);
     }
 
     // ---
 
-    private void registerResources(BundleContext context) {
-        String pluginId = context.getBundle().getSymbolicName();
-        logger.info("Registering web resources of plugin " + pluginId);
+    private void registerResources() {
+        logger.info("Registering web resources of plugin \"" + pluginId + "\"");
         try {
-            // Note: to map the bundle root, acording to OSGi API the resource name "/" is to be used.
+            // Note: to map the bundle root, according to OSGi API the resource name "/" is to be used.
             // This doesn't work: java.lang.IllegalArgumentException: Malformed resource name [/]
             // Using "" instead works. IMO this is an error in the "Apache Felix Http Jetty" bundle.
             httpService.registerResources("/" + pluginId, "", null);
@@ -149,9 +182,40 @@ public class DeepaMehtaPlugin implements BundleActivator {
         }
     }
 
-    private void unregisterResources(BundleContext context) {
-        String pluginId = context.getBundle().getSymbolicName();
-        logger.info("Unregistering web resources of plugin " + pluginId);
+    private void unregisterResources() {
+        logger.info("Unregistering web resources of plugin \"" + pluginId + "\"");
         httpService.unregister("/" + pluginId);
+    }
+
+    // ---
+
+    private void initPluginTopic() {
+        pluginTopic = findPluginTopic();
+        if (pluginTopic != null) {
+            logger.info("No need to create topic for plugin \"" + pluginId + "\" (already exists)");
+        } else {
+            logger.info("Creating topic for plugin \"" + pluginId + "\"");
+            Map properties = new HashMap();
+            properties.put("plugin_id", pluginId);
+            properties.put("db_model_version", 0);
+            pluginTopic = deepamehtaService.createTopic("Plugin", properties);
+        }
+    }
+
+    private Topic findPluginTopic() {
+        return deepamehtaService.getTopic("plugin_id", pluginId);
+    }
+
+    // ---
+
+    private void runMigrations() {
+        int db_model_version = (Integer) pluginTopic.getProperty("db_model_version");
+        int code_model_version = getCodeModelVersion();
+        int migrations_to_run = code_model_version - db_model_version;
+        logger.info("db_model_version=" + db_model_version + ", code_model_version=" + code_model_version +
+            " => Running " + migrations_to_run + " migrations");
+        for (int i = db_model_version + 1; i <= code_model_version; i++) {
+            deepamehtaService.runMigration(this, i);
+        }
     }
 }
