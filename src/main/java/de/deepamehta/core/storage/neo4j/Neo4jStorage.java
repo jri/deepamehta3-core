@@ -22,6 +22,12 @@ import org.neo4j.index.IndexHits;
 import org.neo4j.index.IndexService;
 import org.neo4j.index.lucene.LuceneIndexService;
 import org.neo4j.index.lucene.LuceneFulltextQueryIndexService;
+import org.neo4j.meta.model.MetaModel;
+import org.neo4j.meta.model.MetaModelClass;
+import org.neo4j.meta.model.MetaModelImpl;
+import org.neo4j.meta.model.MetaModelNamespace;
+import org.neo4j.meta.model.MetaModelProperty;
+import org.neo4j.meta.model.MetaModelRelTypes;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -34,25 +40,24 @@ import java.util.logging.Logger;
 
 public class Neo4jStorage implements Storage {
 
-    private Logger logger = Logger.getLogger(getClass().getName());
+    private final Logger logger = Logger.getLogger(getClass().getName());
 
     private final GraphDatabaseService graphDb;
-    private final IndexService index;
-    private final LuceneFulltextQueryIndexService fulltextIndex;
+    private IndexService index;
+    private LuceneFulltextQueryIndexService fulltextIndex;
+    private MetaModelNamespace namespace;
     //
-    TypeCache typeCache;
+    private final TypeCache typeCache;
 
     private enum RelType implements RelationshipType {
-        TOPIC_TYPE, DATA_FIELD, INSTANCE,
         RELATION, SEARCH_RESULT
     }
 
     public Neo4jStorage(String dbPath, TypeCache typeCache) {
         logger.info("Creating DB and indexing services");
-        graphDb = new EmbeddedGraphDatabase(dbPath);
-        index = new LuceneIndexService(graphDb);
-        fulltextIndex = new LuceneFulltextQueryIndexService(graphDb);
         this.typeCache = typeCache;
+        //
+        graphDb = new EmbeddedGraphDatabase(dbPath);
     }
 
 
@@ -110,7 +115,8 @@ public class Neo4jStorage implements Storage {
     public Topic createTopic(String typeId, Map properties) {
         Node node = graphDb.createNode();
         logger.info("Creating node, ID=" + node.getId());
-        setNodeType(node, typeId);
+        // setNodeType(node, typeId);
+        getMetaClass(typeId).getDirectInstances().add(node);
         setProperties(node, properties, typeId);
         return new Topic(node.getId(), typeId, null, properties);  // FIXME: label remains uninitialized
     }
@@ -177,12 +183,16 @@ public class Neo4jStorage implements Storage {
 
     @Override
     public void createTopicType(Map<String, Object> properties, List<DataField> dataFields) {
-        Node type = graphDb.createNode();
         String typeId = (String) properties.get("type_id");
-        logger.info("Creating topic type \"" + typeId + "\", ID=" + type.getId());
-        setProperties(type, properties, "Topic Type");
-        index.index(type, "type_id", typeId);
-        graphDb.getReferenceNode().createRelationshipTo(type, RelType.TOPIC_TYPE);
+        MetaModelClass metaClass = namespace.getMetaClass(typeId, true);
+        logger.info("Creating topic type \"" + typeId + "\", ID=" + metaClass.node().getId());
+        // setProperties(type, properties, "Topic Type");
+        for (String key : properties.keySet()) {
+            metaClass.node().setProperty(key, properties.get(key));
+        }
+        //
+        // index.index(type, "type_id", typeId);
+        // graphDb.getReferenceNode().createRelationshipTo(type, RelType.TOPIC_TYPE);
         //
         for (DataField dataField : dataFields) {
             addDataField(typeId, dataField);
@@ -191,21 +201,26 @@ public class Neo4jStorage implements Storage {
 
     @Override
     public void addDataField(String typeId, DataField dataField) {
-        Map properties = new HashMap();
+        Map<String, Object> properties = new HashMap();
         properties.put("id", dataField.id);
         properties.put("data_type", dataField.dataType);
         properties.put("editor", dataField.editor);
         properties.put("index_mode", dataField.indexMode);
         //
-        Node dataFieldNode = graphDb.createNode();
-        logger.info("Creating data field \"" + dataField.id + "\", ID=" + dataFieldNode.getId());
-        setProperties(dataFieldNode, properties, "Data Field");
-        getTypeNode(typeId).createRelationshipTo(dataFieldNode, RelType.DATA_FIELD);
+        // Node dataFieldNode = graphDb.createNode();
+        MetaModelProperty metaProperty = namespace.getMetaProperty(dataField.id, true);
+        logger.info("Creating data field \"" + dataField.id + "\", ID=" + metaProperty.node().getId());
+        // setProperties(dataFieldNode, properties, "Data Field");
+        for (String key : properties.keySet()) {
+            metaProperty.node().setProperty(key, properties.get(key));
+        }
+        // getTypeNode(typeId).createRelationshipTo(dataFieldNode, RelType.DATA_FIELD);
+        getMetaClass(typeId).getDirectProperties().add(metaProperty);
     }
 
     @Override
     public boolean topicTypeExists(String typeId) {
-        return getTypeNode(typeId) != null;
+        return getMetaClass(typeId) != null;
     }
 
     // --- Misc ---
@@ -216,11 +231,25 @@ public class Neo4jStorage implements Storage {
     }
 
     @Override
+    public void setup() {
+        index = new LuceneIndexService(graphDb);
+        fulltextIndex = new LuceneFulltextQueryIndexService(graphDb);
+        //
+        MetaModel model = new MetaModelImpl(graphDb, index);
+        namespace = model.getGlobalNamespace();
+    }
+
+    @Override
     public void shutdown() {
-        logger.info("Shutting down DB and indexing services");
+        logger.info("Shutdown DB and indexing services");
+        if (index != null) {
+            index.shutdown();
+            fulltextIndex.shutdown();
+        } else {
+            logger.warning("Indexing services not shutdown properly");
+        }
+        //
         graphDb.shutdown();
-        index.shutdown();
-        fulltextIndex.shutdown();
     }
 
 
@@ -315,34 +344,38 @@ public class Neo4jStorage implements Storage {
 
     // --- Types ---
 
-    private Node getTypeNode(String typeId) {
+    /* private Node getTypeNode(String typeId) {
         return index.getSingleNode("type_id", typeId);
-    }
+    } */
 
     private Node getNodeType(Node node) {
         Traverser traverser = node.traverse(Order.BREADTH_FIRST,
             StopEvaluator.DEPTH_ONE, ReturnableEvaluator.ALL_BUT_START_NODE,
-            RelType.INSTANCE, Direction.INCOMING);
+            MetaModelRelTypes.META_HAS_INSTANCE, Direction.INCOMING);
         Iterator<Node> i = traverser.iterator();
         // error check 1
         if (!i.hasNext()) {
             throw new RuntimeException("Type of " + node + " is unknown " +
-                "(there is no incoming INSTANCE relationship)");
+                "(there is no incoming META_HAS_INSTANCE relationship)");
         }
         //
         Node type = i.next();
         // error check 2
         if (i.hasNext()) {
             throw new RuntimeException("Type of " + node + " is ambiguous " +
-                "(there are more than one incoming INSTANCE relationships)");
+                "(there are more than one incoming META_HAS_INSTANCE relationships)");
         }
         //
         return type;
     }
 
-    private void setNodeType(Node node, String typeId) {
+    private MetaModelClass getMetaClass(String typeId) {
+        return namespace.getMetaClass(typeId, false);
+    }
+
+    /* private void setNodeType(Node node, String typeId) {
         Node type = getTypeNode(typeId);
         assert type != null : "Topic type \"" + typeId + "\" not found in DB";
         type.createRelationshipTo(node, RelType.INSTANCE);
-    }
+    } */
 }

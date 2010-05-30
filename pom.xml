@@ -24,12 +24,17 @@
         <dependency>
             <groupId>org.neo4j</groupId>
             <artifactId>neo4j-kernel</artifactId>
-            <version>1.0</version>
+            <version>1.1-SNAPSHOT</version>
         </dependency>
         <dependency>
             <groupId>org.neo4j</groupId>
             <artifactId>neo4j-index</artifactId>
-            <version>1.0</version>
+            <version>1.1-SNAPSHOT</version>
+        </dependency>
+        <dependency>
+            <groupId>org.neo4j</groupId>
+            <artifactId>neo4j-meta-model</artifactId>
+            <version>0.9-SNAPSHOT</version>
         </dependency>
         <dependency>
             <groupId>org.codehaus.jettison</groupId>

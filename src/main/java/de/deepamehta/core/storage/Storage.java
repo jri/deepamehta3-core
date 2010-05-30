@@ -47,5 +47,7 @@ public interface Storage {
 
     public Transaction beginTx();
 
+    public void setup();
+
     public void shutdown();
 }

@@ -49,11 +49,17 @@ public class EmbeddedService implements DeepaMehtaService {
 
     public EmbeddedService() {
         openDB();
+        Transaction tx = storage.beginTx();
         try {
+            setupDB();
             init();
+            tx.success();   
         } catch (Throwable e) {
             e.printStackTrace();
+            logger.warning("ROLLBACK!");
             closeDB();
+        } finally {
+            tx.finish();
         }
     }
 
@@ -363,6 +369,10 @@ public class EmbeddedService implements DeepaMehtaService {
 
     private void openDB() {
         storage = new Neo4jStorage("/Users/jri/var/db/deepamehta-db-neo4j", typeCache);
+    }
+
+    private void setupDB() {
+        storage.setup();
     }
 
     private void closeDB() {
