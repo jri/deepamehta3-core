@@ -22,14 +22,13 @@ import java.util.Hashtable;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-
 import java.util.logging.Logger;
 
 
 
 public class EmbeddedService implements DeepaMehtaService {
 
-    private TypeCache typeCache = new TypeCache();
+    private TypeCache typeCache;
     private Map<String, DeepaMehtaPlugin> plugins = new HashMap();
 
     private Storage storage;
@@ -37,6 +36,7 @@ public class EmbeddedService implements DeepaMehtaService {
     private Logger logger = Logger.getLogger(getClass().getName());
 
     public EmbeddedService() {
+        typeCache = new TypeCache(this);
         openDB();
         Transaction tx = storage.beginTx();
         try {
@@ -254,20 +254,26 @@ public class EmbeddedService implements DeepaMehtaService {
     }
 
     @Override
+    public TopicType getTopicType(String typeId) {
+        TopicType topicType = null;
+        Transaction tx = storage.beginTx();
+        try {
+            topicType = storage.getTopicType(typeId);
+            tx.success();
+        } catch (Throwable e) {
+            e.printStackTrace();
+            logger.warning("ROLLBACK!");
+        } finally {
+            tx.finish();
+            return topicType;
+        }
+    }
+
+    @Override
     public void createTopicType(Map properties, List dataFields) {
         Transaction tx = storage.beginTx();
         try {
-            TopicType topicType = new TopicType(properties, dataFields);
-            String typeId = topicType.getProperty("type_id");
-            // update DB
-            if (!topicTypeExists(typeId)) {
-                storage.createTopicType(properties, dataFields);
-            } else {
-                logger.info("No need to create topic type \"" + typeId + "\" in DB (already exists)");
-            }
-            // update cache
-            typeCache.addTopicType(topicType);
-            //
+            storage.createTopicType(properties, dataFields);
             tx.success();
         } catch (Throwable e) {
             e.printStackTrace();
@@ -281,11 +287,7 @@ public class EmbeddedService implements DeepaMehtaService {
     public void addDataField(String typeId, DataField dataField) {
         Transaction tx = storage.beginTx();
         try {
-            // update DB
             storage.addDataField(typeId, dataField);
-            // update cache
-            typeCache.getTopicType(typeId).addDataField(dataField);
-            //
             tx.success();
         } catch (Throwable e) {
             e.printStackTrace();
@@ -293,12 +295,6 @@ public class EmbeddedService implements DeepaMehtaService {
         } finally {
             tx.finish();
         }
-    }
-
-    @Override
-    public boolean topicTypeExists(String typeId) {
-        // Note: no transaction required because just the indexer is involved here
-        return storage.topicTypeExists(typeId);
     }
 
     // --- Plugins ---
@@ -340,8 +336,8 @@ public class EmbeddedService implements DeepaMehtaService {
             //
             tx.success();
         } catch (Throwable e) {
-            logger.warning("Migration can't run (" + e + ") - ROLLBACK!");
-            re = new RuntimeException("Migration can't run", e);
+            logger.warning("ROLLBACK!");
+            re = new RuntimeException("Plugin migration can't run", e);
         } finally {
             tx.finish();
             if (re != null) throw re;
@@ -403,12 +399,12 @@ public class EmbeddedService implements DeepaMehtaService {
     //
 
     private void runCoreMigrations() throws Exception {
-        int db_model_version = storage.getDbModelVersion();
-        int required_db_model_version = REQUIRED_DB_MODEL_VERSION;
-        int migrations_to_run = required_db_model_version - db_model_version;
-        logger.info("db_model_version=" + db_model_version + ", required_db_model_version=" +
-            required_db_model_version + " => Running " + migrations_to_run + " core migrations");
-        for (int i = db_model_version + 1; i <= required_db_model_version; i++) {
+        int dbModelVersion = storage.getDbModelVersion();
+        int requiredDbModelVersion = REQUIRED_DB_MODEL_VERSION;
+        int migrationsToRun = requiredDbModelVersion - dbModelVersion;
+        logger.info("dbModelVersion=" + dbModelVersion + ", requiredDbModelVersion=" +
+            requiredDbModelVersion + " => Running " + migrationsToRun + " core migrations");
+        for (int i = dbModelVersion + 1; i <= requiredDbModelVersion; i++) {
             runCoreMigration(i);
         }
     }

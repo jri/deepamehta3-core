@@ -4,6 +4,8 @@ import org.codehaus.jettison.json.JSONObject;
 import org.codehaus.jettison.json.JSONArray;
 import org.codehaus.jettison.json.JSONException;
 
+import java.util.Map;
+
 
 
 public class DataField {
@@ -22,6 +24,13 @@ public class DataField {
     public DataField(String id) {
         this();
         setId(id);
+    }
+
+    public DataField(Map<String, String> properties) {
+        setId(properties.get("id"));
+        setDataType(properties.get("data_type"));
+        setEditor(properties.get("editor"));
+        setIndexMode(properties.get("index_mode"));
     }
 
     public DataField(JSONObject dataField) throws JSONException {

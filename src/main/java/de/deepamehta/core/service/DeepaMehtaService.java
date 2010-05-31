@@ -50,11 +50,11 @@ public interface DeepaMehtaService {
 
     public Set<String> getTopicTypeIds();
 
+    public TopicType getTopicType(String typeId);
+
     public void createTopicType(Map properties, List dataFields);
 
     public void addDataField(String typeId, DataField dataField);
-
-    public boolean topicTypeExists(String typeId);
 
     // --- Plugins ---
 

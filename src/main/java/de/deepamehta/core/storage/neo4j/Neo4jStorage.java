@@ -193,18 +193,24 @@ public class Neo4jStorage implements Storage {
     }
 
     @Override
+    public TopicType getTopicType(String typeId) {
+        Map properties = getProperties(getTypeNode(typeId));
+        List<DataField> dataFields = getDataFields(typeId);
+        //
+        return new TopicType(properties, dataFields);
+    }
+
+    @Override
     public void createTopicType(Map<String, Object> properties, List<DataField> dataFields) {
+        // create type
         String typeId = (String) properties.get("type_id");
         MetaModelClass metaClass = namespace.getMetaClass(typeId, true);
         logger.info("Creating topic type \"" + typeId + "\", ID=" + metaClass.node().getId());
-        // setProperties(type, properties, "Topic Type");
+        // set properties
         for (String key : properties.keySet()) {
             metaClass.node().setProperty(key, properties.get(key));
         }
-        //
-        // index.index(type, "type_id", typeId);
-        // graphDb.getReferenceNode().createRelationshipTo(type, RelType.TOPIC_TYPE);
-        //
+        // add data fields
         for (DataField dataField : dataFields) {
             addDataField(typeId, dataField);
         }
@@ -218,20 +224,14 @@ public class Neo4jStorage implements Storage {
         properties.put("editor", dataField.editor);
         properties.put("index_mode", dataField.indexMode);
         //
-        // Node dataFieldNode = graphDb.createNode();
         MetaModelProperty metaProperty = namespace.getMetaProperty(dataField.id, true);
         logger.info("Creating data field \"" + dataField.id + "\", ID=" + metaProperty.node().getId());
-        // setProperties(dataFieldNode, properties, "Data Field");
         for (String key : properties.keySet()) {
             metaProperty.node().setProperty(key, properties.get(key));
         }
-        // getTypeNode(typeId).createRelationshipTo(dataFieldNode, RelType.DATA_FIELD);
         getMetaClass(typeId).getDirectProperties().add(metaProperty);
-    }
-
-    @Override
-    public boolean topicTypeExists(String typeId) {
-        return getMetaClass(typeId) != null;
+        // update cache
+        typeCache.invalidate(typeId);
     }
 
     // --- DB ---
@@ -309,18 +309,6 @@ public class Neo4jStorage implements Storage {
         return new Topic(node.getId(), typeId, label, null);    // FIXME: properties remain uninitialized
     }
 
-    private String getTypeId(Node node) {
-        // FIXME: meta-types must be detected manually
-        if (node.getProperty("type_id", null) != null) {
-            // FIXME: a more elaborated criteria is required, e.g. an incoming TOPIC_TYPE relation
-            return "Topic Type";
-        } else if (node.getProperty("data_type", null) != null) {
-            // FIXME: a more elaborated criteria is required, e.g. an incoming DATA_FIELD relation
-            return "Data Field";
-        }
-        return (String) getNodeType(node).getProperty("type_id");
-    }
-
     // --- Properties ---
 
     private Map getProperties(PropertyContainer container) {
@@ -373,6 +361,18 @@ public class Neo4jStorage implements Storage {
 
     // --- Types ---
 
+    private String getTypeId(Node node) {
+        // FIXME: meta-types must be detected manually
+        if (node.getProperty("type_id", null) != null) {
+            // FIXME: a more elaborated criteria is required, e.g. an incoming TOPIC_TYPE relation
+            return "Topic Type";
+        } else if (node.getProperty("data_type", null) != null) {
+            // FIXME: a more elaborated criteria is required, e.g. an incoming DATA_FIELD relation
+            return "Data Field";
+        }
+        return (String) getNodeType(node).getProperty("type_id");
+    }
+
     private Node getNodeType(Node node) {
         Traverser traverser = node.traverse(Order.BREADTH_FIRST,
             StopEvaluator.DEPTH_ONE, ReturnableEvaluator.ALL_BUT_START_NODE,
@@ -394,7 +394,19 @@ public class Neo4jStorage implements Storage {
         return type;
     }
 
+    private Node getTypeNode(String typeId) {
+        return getMetaClass(typeId).node();
+    }
+
     private MetaModelClass getMetaClass(String typeId) {
         return namespace.getMetaClass(typeId, false);
+    }
+
+    private List<DataField> getDataFields(String typeId) {
+        List dataFields = new ArrayList();
+        for (MetaModelProperty metaProp : getMetaClass(typeId).getDirectProperties()) {
+            dataFields.add(new DataField(getProperties(metaProp.node())));
+        }
+        return dataFields;
     }
 }

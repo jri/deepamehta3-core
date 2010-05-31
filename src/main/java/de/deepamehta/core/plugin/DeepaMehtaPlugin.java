@@ -29,11 +29,13 @@ public class DeepaMehtaPlugin implements BundleActivator {
     private Bundle pluginBundle;
     private Topic  pluginTopic;
 
-    private ServiceTracker    deepamehtaServiceTracker;
-    private DeepaMehtaService deepamehtaService = null;
+    private boolean isActivated;
+
+    private ServiceTracker deepamehtaServiceTracker;
+    private DeepaMehtaService dms;
 
     private ServiceTracker httpServiceTracker;
-    private HttpService httpService = null;
+    private HttpService httpService;
 
     private Logger logger = Logger.getLogger(getClass().getName());
 
@@ -53,7 +55,7 @@ public class DeepaMehtaPlugin implements BundleActivator {
                                                           InstantiationException,
                                                           IllegalAccessException {
         String migrationClassName = getClass().getPackage().getName() + ".migrations.Migration" + migrationNr;
-        return (Migration) Class.forName(migrationClassName).newInstance();
+        return (Migration) pluginBundle.loadClass(migrationClassName).newInstance();
     }
 
 
@@ -70,7 +72,7 @@ public class DeepaMehtaPlugin implements BundleActivator {
         pluginName = (String) pluginBundle.getHeaders().get("Bundle-Name");
         pluginClass = (String) pluginBundle.getHeaders().get("Bundle-Activator");
         //
-        logger.info("### Starting DeepaMehta plugin bundle \"" + pluginName + "\" ###");
+        logger.info("----- Starting DeepaMehta plugin bundle \"" + pluginName + "\" -----");
         //
         deepamehtaServiceTracker = createDeepamehtaServiceTracker(context);
         deepamehtaServiceTracker.open();
@@ -80,7 +82,7 @@ public class DeepaMehtaPlugin implements BundleActivator {
     }
 
     public void stop(BundleContext context) {
-        logger.info("### Stopping DeepaMehta plugin bundle \"" + pluginName + "\" ###");
+        logger.info("----- Stopping DeepaMehta plugin bundle \"" + pluginName + "\" -----");
         //
         deepamehtaServiceTracker.close();
         httpServiceTracker.close();
@@ -94,7 +96,7 @@ public class DeepaMehtaPlugin implements BundleActivator {
 
 
 
-    public int getCodeModelVersion() {
+    public int requiredDBModelVersion() {
         return 0;
     }
 
@@ -121,20 +123,18 @@ public class DeepaMehtaPlugin implements BundleActivator {
 
             @Override
             public Object addingService(ServiceReference serviceRef) {
-                logger.info("Adding DeepaMehta Core service");
-                deepamehtaService = (DeepaMehtaService) super.addingService(serviceRef);
-                initPluginTopic();
-                runPluginMigrations();
-                registerPlugin();
-                return deepamehtaService;
+                logger.info("Adding DeepaMehta core service to plugin \"" + pluginName + "\"");
+                dms = (DeepaMehtaService) super.addingService(serviceRef);
+                initPlugin();
+                return dms;
             }
 
             @Override
             public void removedService(ServiceReference ref, Object service) {
-                if (service == deepamehtaService) {
-                    logger.info("Removing DeepaMehta Core service");
+                if (service == dms) {
+                    logger.info("Removing DeepaMehta core service from plugin \"" + pluginName + "\"");
                     unregisterPlugin();
-                    deepamehtaService = null;
+                    dms = null;
                 }
                 super.removedService(ref, service);
             }
@@ -146,7 +146,7 @@ public class DeepaMehtaPlugin implements BundleActivator {
 
             @Override
             public Object addingService(ServiceReference serviceRef) {
-                logger.info("Adding HTTP service");
+                logger.info("Adding HTTP service to plugin \"" + pluginName + "\"");
                 httpService = (HttpService) super.addingService(serviceRef);
                 registerResources();
                 return httpService;
@@ -155,7 +155,7 @@ public class DeepaMehtaPlugin implements BundleActivator {
             @Override
             public void removedService(ServiceReference ref, Object service) {
                 if (service == httpService) {
-                    logger.info("Removing HTTP service");
+                    logger.info("Removing HTTP service from plugin \"" + pluginName + "\"");
                     unregisterResources();
                     httpService = null;
                 }
@@ -167,19 +167,22 @@ public class DeepaMehtaPlugin implements BundleActivator {
     // ---
 
     private void registerPlugin() {
-        logger.info("Registering plugin \"" + pluginId + "\" (" + pluginClass + ")");
-        deepamehtaService.registerPlugin(pluginId, this);
+        logger.info("Registering plugin \"" + pluginName + "\" (" + pluginClass + ")");
+        dms.registerPlugin(pluginId, this);
+        isActivated = true;
     }
 
     private void unregisterPlugin() {
-        logger.info("Unregistering plugin \"" + pluginId + "\" (" + pluginClass + ")");
-        deepamehtaService.unregisterPlugin(pluginId);
+        if (isActivated) {
+            logger.info("Unregistering plugin \"" + pluginName + "\" (" + pluginClass + ")");
+            dms.unregisterPlugin(pluginId);
+        }
     }
 
     // ---
 
     private void registerResources() {
-        logger.info("Registering web resources of plugin \"" + pluginId + "\"");
+        logger.info("Registering web resources of plugin \"" + pluginName + "\"");
         try {
             // Note: to map the bundle root, according to OSGi API the resource name "/" is to be used.
             // This doesn't work: java.lang.IllegalArgumentException: Malformed resource name [/]
@@ -191,7 +194,7 @@ public class DeepaMehtaPlugin implements BundleActivator {
     }
 
     private void unregisterResources() {
-        logger.info("Unregistering web resources of plugin \"" + pluginId + "\"");
+        logger.info("Unregistering web resources of plugin \"" + pluginName + "\"");
         httpService.unregister("/" + pluginId);
     }
 
@@ -200,30 +203,41 @@ public class DeepaMehtaPlugin implements BundleActivator {
     private void initPluginTopic() {
         pluginTopic = findPluginTopic();
         if (pluginTopic != null) {
-            logger.info("No need to create topic for plugin \"" + pluginId + "\" (already exists)");
+            logger.info("No need to create topic for plugin \"" + pluginName + "\" (already exists)");
         } else {
-            logger.info("Creating topic for plugin \"" + pluginId + "\"");
+            logger.info("Creating topic for plugin \"" + pluginName + "\"");
             Map properties = new HashMap();
             properties.put("plugin_id", pluginId);
             properties.put("db_model_version", 0);
-            pluginTopic = deepamehtaService.createTopic("Plugin", properties);
+            pluginTopic = dms.createTopic("Plugin", properties);
         }
     }
 
     private Topic findPluginTopic() {
-        return deepamehtaService.getTopic("plugin_id", pluginId);
+        return dms.getTopic("plugin_id", pluginId);
     }
 
     // ---
 
+    private void initPlugin() {
+        try {
+            initPluginTopic();
+            runPluginMigrations();
+            registerPlugin();
+        } catch (Throwable e) {
+            e.printStackTrace();
+            logger.warning("Plugin \"" + pluginName + "\" is not activated");
+        }
+    }
+
     private void runPluginMigrations() {
-        int db_model_version = (Integer) pluginTopic.getProperty("db_model_version");
-        int code_model_version = getCodeModelVersion();
-        int migrations_to_run = code_model_version - db_model_version;
-        logger.info("db_model_version=" + db_model_version + ", code_model_version=" + code_model_version +
-            " => Running " + migrations_to_run + " plugin migrations");
-        for (int i = db_model_version + 1; i <= code_model_version; i++) {
-            deepamehtaService.runPluginMigration(this, i);
+        int dbModelVersion = (Integer) pluginTopic.getProperty("db_model_version");
+        int requiredDbModelVersion = requiredDBModelVersion();
+        int migrationsToRun = requiredDbModelVersion - dbModelVersion;
+        logger.info("dbModelVersion=" + dbModelVersion + ", requiredDbModelVersion=" + requiredDbModelVersion +
+            " => Running " + migrationsToRun + " plugin migrations");
+        for (int i = dbModelVersion + 1; i <= requiredDbModelVersion; i++) {
+            dms.runPluginMigration(this, i);
         }
     }
 }
