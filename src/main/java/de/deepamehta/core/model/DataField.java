@@ -19,6 +19,11 @@ public class DataField {
         setIndexMode("fulltext");
     }
 
+    public DataField(String id) {
+        this();
+        setId(id);
+    }
+
     public DataField(JSONObject dataField) throws JSONException {
         this();
         setId(dataField.getString("id"));

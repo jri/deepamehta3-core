@@ -5,22 +5,11 @@ import de.deepamehta.core.model.Topic;
 import de.deepamehta.core.model.TopicType;
 import de.deepamehta.core.model.Relation;
 import de.deepamehta.core.plugin.DeepaMehtaPlugin;
-import de.deepamehta.core.plugin.Migration;
 import de.deepamehta.core.service.DeepaMehtaService;
+import de.deepamehta.core.service.Migration;
 import de.deepamehta.core.storage.Storage;
 import de.deepamehta.core.storage.Transaction;
 import de.deepamehta.core.storage.neo4j.Neo4jStorage;
-
-import org.osgi.framework.Bundle;
-
-import org.codehaus.jettison.json.JSONObject;
-import org.codehaus.jettison.json.JSONArray;
-import org.codehaus.jettison.json.JSONException;
-
-import java.io.BufferedReader;
-import java.io.InputStream;
-import java.io.InputStreamReader;
-import java.io.IOException;
 
 import java.lang.reflect.Method;
 import java.lang.reflect.InvocationTargetException;
@@ -52,7 +41,7 @@ public class EmbeddedService implements DeepaMehtaService {
         Transaction tx = storage.beginTx();
         try {
             setupDB();
-            init();
+            runCoreMigrations();
             tx.success();   
         } catch (Throwable e) {
             e.printStackTrace();
@@ -73,6 +62,7 @@ public class EmbeddedService implements DeepaMehtaService {
 
     // --- Topics ---
 
+    @Override
     public Topic getTopic(long id) {
         Topic topic = null;
         Transaction tx = storage.beginTx();
@@ -88,6 +78,7 @@ public class EmbeddedService implements DeepaMehtaService {
         }
     }
 
+    @Override
     public Topic getTopic(String key, Object value) {
         Topic topic = null;
         Transaction tx = storage.beginTx();
@@ -103,6 +94,7 @@ public class EmbeddedService implements DeepaMehtaService {
         }
     }
 
+    @Override
     public List<Topic> getRelatedTopics(long topicId, List<String> excludeRelTypes) {
         List topics = null;
         Transaction tx = storage.beginTx();
@@ -118,6 +110,7 @@ public class EmbeddedService implements DeepaMehtaService {
         }
     }
 
+    @Override
     public Topic searchTopics(String searchTerm) {
         Topic resultTopic = null;
         Transaction tx = storage.beginTx();
@@ -142,6 +135,7 @@ public class EmbeddedService implements DeepaMehtaService {
         }
     }
 
+    @Override
     public Topic createTopic(String typeId, Map properties) {
         Topic topic = null;
         Transaction tx = storage.beginTx();
@@ -160,6 +154,7 @@ public class EmbeddedService implements DeepaMehtaService {
         }
     }
 
+    @Override
     public void setTopicProperties(long id, Map properties) {
         Transaction tx = storage.beginTx();
         try {
@@ -173,6 +168,7 @@ public class EmbeddedService implements DeepaMehtaService {
         }
     }
 
+    @Override
     public void deleteTopic(long id) {
         Transaction tx = storage.beginTx();
         try {
@@ -193,6 +189,7 @@ public class EmbeddedService implements DeepaMehtaService {
      * If no such relation exists null is returned.
      * If more than one relation exists, only the first one is returned.
      */
+    @Override
     public Relation getRelation(long srcTopicId, long dstTopicId) {
         Relation relation = null;
         Transaction tx = storage.beginTx();
@@ -208,6 +205,7 @@ public class EmbeddedService implements DeepaMehtaService {
         }
     }
 
+    @Override
     public Relation createRelation(String typeId, long srcTopicId, long dstTopicId, Map properties) {
         Relation relation = null;
         Transaction tx = storage.beginTx();
@@ -223,6 +221,7 @@ public class EmbeddedService implements DeepaMehtaService {
         }
     }
 
+    @Override
     public void deleteRelation(long id) {
         Transaction tx = storage.beginTx();
         try {
@@ -238,10 +237,23 @@ public class EmbeddedService implements DeepaMehtaService {
 
     // --- Types ---
 
-    public Collection<TopicType> getTopicTypes() {
-        return typeCache.getTopicTypes();
+    @Override
+    public Set<String> getTopicTypeIds() {
+        Set typeIds = null;
+        Transaction tx = storage.beginTx();
+        try {
+            typeIds = storage.getTopicTypeIds();
+            tx.success();
+        } catch (Throwable e) {
+            e.printStackTrace();
+            logger.warning("ROLLBACK!");
+        } finally {
+            tx.finish();
+            return typeIds;
+        }
     }
 
+    @Override
     public void createTopicType(Map properties, List dataFields) {
         Transaction tx = storage.beginTx();
         try {
@@ -265,6 +277,7 @@ public class EmbeddedService implements DeepaMehtaService {
         }
     }
 
+    @Override
     public void addDataField(String typeId, DataField dataField) {
         Transaction tx = storage.beginTx();
         try {
@@ -282,6 +295,7 @@ public class EmbeddedService implements DeepaMehtaService {
         }
     }
 
+    @Override
     public boolean topicTypeExists(String typeId) {
         // Note: no transaction required because just the indexer is involved here
         return storage.topicTypeExists(typeId);
@@ -289,48 +303,54 @@ public class EmbeddedService implements DeepaMehtaService {
 
     // --- Plugins ---
 
+    @Override
     public void registerPlugin(String pluginId, DeepaMehtaPlugin plugin) {
         plugins.put(pluginId, plugin);
     }
 
+    @Override
     public void unregisterPlugin(String pluginId) {
         if (plugins.remove(pluginId) == null) {
             throw new RuntimeException("Plugin " + pluginId + " is not registered");
         }
     }
 
+    @Override
     public Set<String> getPluginIds() {
         return plugins.keySet();
     }
 
+    @Override
     public DeepaMehtaPlugin getPlugin(String pluginId) {
         return plugins.get(pluginId);
     }
 
-    public void runMigration(DeepaMehtaPlugin plugin, int migrationNr) {
+    @Override
+    public void runPluginMigration(DeepaMehtaPlugin plugin, int migrationNr) throws RuntimeException {
+        RuntimeException re = null;
         Transaction tx = storage.beginTx();
         try {
-            String migrationClassName = plugin.getClass().getPackage().getName() + ".migrations.Migration" + migrationNr;
-            logger.info("Running migration " + migrationClassName);
-            Class migrationClass = Class.forName(migrationClassName);
-            Migration migration = (Migration) migrationClass.newInstance();
+            Migration migration = plugin.getMigration(migrationNr);
+            logger.info("Running plugin migration " + migration.getClass().getName());
             migration.setDeepaMehtaService(this);
             migration.run();
             // update DB model version
-            logger.info("Migration complete - Updating DB model version (" + migrationNr + ")");
+            logger.info("Plugin migration complete - Updating DB model version (" + migrationNr + ")");
             updatePluginDbModelVersion(plugin, migrationNr);
             //
             tx.success();
         } catch (Throwable e) {
-            e.printStackTrace();
-            logger.warning("ROLLBACK!");
+            logger.warning("Migration can't run (" + e + ") - ROLLBACK!");
+            re = new RuntimeException("Migration can't run", e);
         } finally {
             tx.finish();
+            if (re != null) throw re;
         }
     }
 
     // --- Misc ---
 
+    @Override
     public void shutdown() {
         closeDB();
     }
@@ -368,6 +388,7 @@ public class EmbeddedService implements DeepaMehtaService {
     // --- DB ---
 
     private void openDB() {
+        // FIXME: make the DB path a configuration setting
         storage = new Neo4jStorage("/Users/jri/var/db/deepamehta-db-neo4j", typeCache);
     }
 
@@ -381,34 +402,25 @@ public class EmbeddedService implements DeepaMehtaService {
 
     //
 
-    private void init() {
-        try {
-            InputStream is = getClass().getResourceAsStream("/types.json");
-            if (is == null) {
-                throw new RuntimeException("Resource /types.json not found");
-            }
-            BufferedReader in = new BufferedReader(new InputStreamReader(is));
-            String line;
-            StringBuilder json = new StringBuilder();
-            while ((line = in.readLine()) != null) {
-                json.append(line);
-            }
-            createTypes(json.toString());
-        } catch (Throwable e) {
-            throw new RuntimeException("ERROR while processing /types.json", e);
+    private void runCoreMigrations() throws Exception {
+        int db_model_version = storage.getDbModelVersion();
+        int required_db_model_version = REQUIRED_DB_MODEL_VERSION;
+        int migrations_to_run = required_db_model_version - db_model_version;
+        logger.info("db_model_version=" + db_model_version + ", required_db_model_version=" +
+            required_db_model_version + " => Running " + migrations_to_run + " core migrations");
+        for (int i = db_model_version + 1; i <= required_db_model_version; i++) {
+            runCoreMigration(i);
         }
     }
 
-    private void createTypes(String json) throws JSONException {
-        JSONArray types = new JSONArray(json);
-        for (int i = 0; i < types.length(); i++) {
-            TopicType topicType = new TopicType(types.getJSONObject(i));
-            /* Bootstrap: meta-types must be in the cache before creating types
-            if (topicType.getProperty("type_id").equals("Topic Type")) {
-                typeCache.addTopicType(topicType);
-            } */
-            //
-            createTopicType(topicType.properties, topicType.dataFields);
-        }
+    private void runCoreMigration(int migrationNr) throws Exception {
+        String migrationClassName = "de.deepamehta.core.migrations.Migration" + migrationNr;
+        Migration migration = (Migration) Class.forName(migrationClassName).newInstance();
+        logger.info("Running core migration " + migration.getClass().getName());
+        migration.setDeepaMehtaService(this);
+        migration.run();
+        // update DB model version
+        logger.info("Core migration complete - Updating DB model version (" + migrationNr + ")");
+        storage.setDbModelVersion(migrationNr);
     }
 }

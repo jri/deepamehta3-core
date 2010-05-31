@@ -28,15 +28,15 @@ public class Activator implements BundleActivator {
 
 
     public void start(BundleContext context) {
-        logger.info("Starting DeepaMehta Core bundle");
+        logger.info("### Starting DeepaMehta core bundle ###");
         service = new EmbeddedService();
         //
-        logger.info("Registering DeepaMehta Core service");
+        logger.info("Registering DeepaMehta core service");
         context.registerService(DeepaMehtaService.class.getName(), service, null);
     }
 
     public void stop(BundleContext context) {
-        logger.info("Stopping DeepaMehta Core bundle");
+        logger.info("### Stopping DeepaMehta core bundle ###");
         service.shutdown();
     }
 }

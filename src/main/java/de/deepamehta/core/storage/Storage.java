@@ -6,6 +6,7 @@ import de.deepamehta.core.model.Relation;
 
 import java.util.Map;
 import java.util.List;
+import java.util.Set;
 
 
 
@@ -37,17 +38,23 @@ public interface Storage {
 
     // --- Types ---
 
+    public Set<String> getTopicTypeIds();
+
     public void createTopicType(Map<String, Object> properties, List<DataField> dataFields);
 
     public void addDataField(String typeId, DataField dataField);
 
     public boolean topicTypeExists(String typeId);
 
-    // --- Misc ---
+    // --- DB ---
 
     public Transaction beginTx();
 
     public void setup();
 
     public void shutdown();
+
+    public int getDbModelVersion();
+
+    public void setDbModelVersion(int dbModelVersion);
 }

@@ -31,9 +31,11 @@ import org.neo4j.meta.model.MetaModelRelTypes;
 
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.logging.Logger;
 
 
@@ -42,7 +44,7 @@ public class Neo4jStorage implements Storage {
 
     private final Logger logger = Logger.getLogger(getClass().getName());
 
-    private final GraphDatabaseService graphDb;
+    private GraphDatabaseService graphDb;
     private IndexService index;
     private LuceneFulltextQueryIndexService fulltextIndex;
     private MetaModelNamespace namespace;
@@ -182,6 +184,15 @@ public class Neo4jStorage implements Storage {
     // --- Types ---
 
     @Override
+    public Set<String> getTopicTypeIds() {
+        Set typeIds = new HashSet();
+        for (MetaModelClass metaClass : namespace.getMetaClasses()) {
+            typeIds.add(metaClass.getName());
+        }
+        return typeIds;
+    }
+
+    @Override
     public void createTopicType(Map<String, Object> properties, List<DataField> dataFields) {
         String typeId = (String) properties.get("type_id");
         MetaModelClass metaClass = namespace.getMetaClass(typeId, true);
@@ -223,20 +234,29 @@ public class Neo4jStorage implements Storage {
         return getMetaClass(typeId) != null;
     }
 
-    // --- Misc ---
+    // --- DB ---
 
     @Override
     public de.deepamehta.core.storage.Transaction beginTx() {
         return new Neo4jTransaction(graphDb);
     }
 
+    /**
+     * Performs storage layer initialization which is required to run in a transaction.
+     */
     @Override
     public void setup() {
+        // init index services
         index = new LuceneIndexService(graphDb);
         fulltextIndex = new LuceneFulltextQueryIndexService(graphDb);
-        //
+        // init meta model
         MetaModel model = new MetaModelImpl(graphDb, index);
         namespace = model.getGlobalNamespace();
+        // init DB model version
+        if (!graphDb.getReferenceNode().hasProperty("db_model_version")) {
+            logger.info("Starting with a fresh DB - Setting DB model version to 0");
+            setDbModelVersion(0);
+        }
     }
 
     @Override
@@ -250,6 +270,17 @@ public class Neo4jStorage implements Storage {
         }
         //
         graphDb.shutdown();
+        graphDb = null;
+    }
+
+    @Override
+    public int getDbModelVersion() {
+        return (Integer) graphDb.getReferenceNode().getProperty("db_model_version");
+    }
+
+    @Override
+    public void setDbModelVersion(int dbModelVersion) {
+        graphDb.getReferenceNode().setProperty("db_model_version", dbModelVersion);
     }
 
 
@@ -279,16 +310,14 @@ public class Neo4jStorage implements Storage {
     }
 
     private String getTypeId(Node node) {
-        /* Bootstrap: meta-types must be detected manually
-        // FIXME: perhaps it is better to model meta-types explicitly
+        // FIXME: meta-types must be detected manually
         if (node.getProperty("type_id", null) != null) {
             // FIXME: a more elaborated criteria is required, e.g. an incoming TOPIC_TYPE relation
             return "Topic Type";
         } else if (node.getProperty("data_type", null) != null) {
             // FIXME: a more elaborated criteria is required, e.g. an incoming DATA_FIELD relation
             return "Data Field";
-        } */
-        //
+        }
         return (String) getNodeType(node).getProperty("type_id");
     }
 
@@ -344,10 +373,6 @@ public class Neo4jStorage implements Storage {
 
     // --- Types ---
 
-    /* private Node getTypeNode(String typeId) {
-        return index.getSingleNode("type_id", typeId);
-    } */
-
     private Node getNodeType(Node node) {
         Traverser traverser = node.traverse(Order.BREADTH_FIRST,
             StopEvaluator.DEPTH_ONE, ReturnableEvaluator.ALL_BUT_START_NODE,
@@ -372,10 +397,4 @@ public class Neo4jStorage implements Storage {
     private MetaModelClass getMetaClass(String typeId) {
         return namespace.getMetaClass(typeId, false);
     }
-
-    /* private void setNodeType(Node node, String typeId) {
-        Node type = getTypeNode(typeId);
-        assert type != null : "Topic type \"" + typeId + "\" not found in DB";
-        type.createRelationshipTo(node, RelType.INSTANCE);
-    } */
 }

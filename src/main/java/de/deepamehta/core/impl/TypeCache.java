@@ -24,8 +24,4 @@ public class TypeCache {
         }
         return topicType;
     }
-
-    Collection<TopicType> getTopicTypes() {
-        return topicTypes.values();
-    }
 }

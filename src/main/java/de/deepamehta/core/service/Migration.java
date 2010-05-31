@@ -1,6 +1,4 @@
-package de.deepamehta.core.plugin;
-
-import de.deepamehta.core.service.DeepaMehtaService;
+package de.deepamehta.core.service;
 
 
 

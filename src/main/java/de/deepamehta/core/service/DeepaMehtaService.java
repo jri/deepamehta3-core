@@ -15,6 +15,8 @@ import java.util.Set;
 
 public interface DeepaMehtaService {
 
+    public static final int REQUIRED_DB_MODEL_VERSION = 1;
+
     // --- Topics ---
 
     public Topic getTopic(long id);
@@ -46,7 +48,7 @@ public interface DeepaMehtaService {
 
     // --- Types ---
 
-    public Collection<TopicType> getTopicTypes();
+    public Set<String> getTopicTypeIds();
 
     public void createTopicType(Map properties, List dataFields);
 
@@ -64,7 +66,7 @@ public interface DeepaMehtaService {
 
     public DeepaMehtaPlugin getPlugin(String pluginId);
 
-    public void runMigration(DeepaMehtaPlugin plugin, int migrationNr);
+    public void runPluginMigration(DeepaMehtaPlugin plugin, int migrationNr);
 
     // --- Misc ---
 

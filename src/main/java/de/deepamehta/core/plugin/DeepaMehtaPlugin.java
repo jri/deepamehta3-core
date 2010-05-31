@@ -2,6 +2,7 @@ package de.deepamehta.core.plugin;
 
 import de.deepamehta.core.model.Topic;
 import de.deepamehta.core.service.DeepaMehtaService;
+import de.deepamehta.core.service.Migration;
 
 import org.osgi.framework.Bundle;
 import org.osgi.framework.BundleActivator;
@@ -48,6 +49,13 @@ public class DeepaMehtaPlugin implements BundleActivator {
         return pluginTopic;
     }
 
+    public Migration getMigration(int migrationNr) throws ClassNotFoundException,
+                                                          InstantiationException,
+                                                          IllegalAccessException {
+        String migrationClassName = getClass().getPackage().getName() + ".migrations.Migration" + migrationNr;
+        return (Migration) Class.forName(migrationClassName).newInstance();
+    }
+
 
 
     // **************************************
@@ -62,7 +70,7 @@ public class DeepaMehtaPlugin implements BundleActivator {
         pluginName = (String) pluginBundle.getHeaders().get("Bundle-Name");
         pluginClass = (String) pluginBundle.getHeaders().get("Bundle-Activator");
         //
-        logger.info("Starting DeepaMehta Plugin bundle \"" + pluginName + "\"");
+        logger.info("### Starting DeepaMehta plugin bundle \"" + pluginName + "\" ###");
         //
         deepamehtaServiceTracker = createDeepamehtaServiceTracker(context);
         deepamehtaServiceTracker.open();
@@ -72,7 +80,7 @@ public class DeepaMehtaPlugin implements BundleActivator {
     }
 
     public void stop(BundleContext context) {
-        logger.info("Stopping DeepaMehta Plugin bundle \"" + pluginName + "\"");
+        logger.info("### Stopping DeepaMehta plugin bundle \"" + pluginName + "\" ###");
         //
         deepamehtaServiceTracker.close();
         httpServiceTracker.close();
@@ -116,7 +124,7 @@ public class DeepaMehtaPlugin implements BundleActivator {
                 logger.info("Adding DeepaMehta Core service");
                 deepamehtaService = (DeepaMehtaService) super.addingService(serviceRef);
                 initPluginTopic();
-                runMigrations();
+                runPluginMigrations();
                 registerPlugin();
                 return deepamehtaService;
             }
@@ -208,14 +216,14 @@ public class DeepaMehtaPlugin implements BundleActivator {
 
     // ---
 
-    private void runMigrations() {
+    private void runPluginMigrations() {
         int db_model_version = (Integer) pluginTopic.getProperty("db_model_version");
         int code_model_version = getCodeModelVersion();
         int migrations_to_run = code_model_version - db_model_version;
         logger.info("db_model_version=" + db_model_version + ", code_model_version=" + code_model_version +
-            " => Running " + migrations_to_run + " migrations");
+            " => Running " + migrations_to_run + " plugin migrations");
         for (int i = db_model_version + 1; i <= code_model_version; i++) {
-            deepamehtaService.runMigration(this, i);
+            deepamehtaService.runPluginMigration(this, i);
         }
     }
 }
