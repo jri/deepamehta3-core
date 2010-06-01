@@ -41,6 +41,8 @@ public class TopicType {
         }
     }
 
+    // ---
+
     public String getProperty(String key) {
         return properties.get(key);
     }
@@ -57,6 +59,8 @@ public class TopicType {
         }
         throw new RuntimeException("Topic type \"" + getProperty("type_id") + "\" has no data field \"" + id + "\"");
     }
+
+    // ---
 
     public void addDataField(DataField dataField) {
         dataFields.add(dataField);

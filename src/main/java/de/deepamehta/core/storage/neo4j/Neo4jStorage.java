@@ -13,11 +13,11 @@ import org.neo4j.graphdb.Node;
 import org.neo4j.graphdb.PropertyContainer;
 import org.neo4j.graphdb.Relationship;
 import org.neo4j.graphdb.RelationshipType;
-import org.neo4j.graphdb.ReturnableEvaluator;
-import org.neo4j.graphdb.StopEvaluator;
-import org.neo4j.graphdb.Traverser;
-import org.neo4j.graphdb.Traverser.Order;
+import org.neo4j.graphdb.traversal.ReturnFilter;
+import org.neo4j.graphdb.traversal.TraversalDescription;
+import org.neo4j.graphdb.traversal.Traverser;
 import org.neo4j.kernel.EmbeddedGraphDatabase;
+import org.neo4j.kernel.TraversalFactory;
 import org.neo4j.index.IndexHits;
 import org.neo4j.index.IndexService;
 import org.neo4j.index.lucene.LuceneIndexService;
@@ -51,8 +51,9 @@ public class Neo4jStorage implements Storage {
     //
     private final TypeCache typeCache;
 
-    private enum RelType implements RelationshipType {
-        RELATION, SEARCH_RESULT
+    static enum RelType implements RelationshipType {
+        RELATION, SEARCH_RESULT,
+        SEQUENCE_START, SEQUENCE
     }
 
     public Neo4jStorage(String dbPath, TypeCache typeCache) {
@@ -205,11 +206,14 @@ public class Neo4jStorage implements Storage {
         // create type
         String typeId = (String) properties.get("type_id");
         MetaModelClass metaClass = namespace.getMetaClass(typeId, true);
-        logger.info("Creating topic type \"" + typeId + "\", ID=" + metaClass.node().getId());
+        Node typeNode = metaClass.node();
+        logger.info("Creating topic type \"" + typeId + "\", ID=" + typeNode.getId());
         // set properties
         for (String key : properties.keySet()) {
-            metaClass.node().setProperty(key, properties.get(key));
+            typeNode.setProperty(key, properties.get(key));
         }
+        // update cache
+        typeCache.put(new Neo4jTopicType(properties, typeNode));
         // add data fields
         for (DataField dataField : dataFields) {
             addDataField(typeId, dataField);
@@ -218,20 +222,19 @@ public class Neo4jStorage implements Storage {
 
     @Override
     public void addDataField(String typeId, DataField dataField) {
-        Map<String, Object> properties = new HashMap();
-        properties.put("id", dataField.id);
-        properties.put("data_type", dataField.dataType);
-        properties.put("editor", dataField.editor);
-        properties.put("index_mode", dataField.indexMode);
-        //
+        // create data field
         MetaModelProperty metaProperty = namespace.getMetaProperty(dataField.id, true);
-        logger.info("Creating data field \"" + dataField.id + "\", ID=" + metaProperty.node().getId());
-        for (String key : properties.keySet()) {
-            metaProperty.node().setProperty(key, properties.get(key));
-        }
+        Node fieldNode = metaProperty.node();
+        logger.info("Creating data field \"" + dataField.id + "\", ID=" + fieldNode.getId());
         getMetaClass(typeId).getDirectProperties().add(metaProperty);
+        // set properties
+        Map<String, String> properties = dataField.getProperties();
+        for (String key : properties.keySet()) {
+            fieldNode.setProperty(key, properties.get(key));
+        }
         // update cache
-        typeCache.invalidate(typeId);
+        TopicType topicType = typeCache.getTopicType(typeId);
+        topicType.addDataField(new Neo4jDataField(properties, fieldNode));
     }
 
     // --- DB ---
@@ -374,10 +377,11 @@ public class Neo4jStorage implements Storage {
     }
 
     private Node getNodeType(Node node) {
-        Traverser traverser = node.traverse(Order.BREADTH_FIRST,
-            StopEvaluator.DEPTH_ONE, ReturnableEvaluator.ALL_BUT_START_NODE,
-            MetaModelRelTypes.META_HAS_INSTANCE, Direction.INCOMING);
-        Iterator<Node> i = traverser.iterator();
+        TraversalDescription desc = TraversalFactory.createTraversalDescription();
+        desc = desc.relationships(MetaModelRelTypes.META_HAS_INSTANCE, Direction.INCOMING);
+        desc = desc.filter(ReturnFilter.ALL_BUT_START_NODE);
+        //
+        Iterator<Node> i = desc.traverse(node).nodes().iterator();
         // error check 1
         if (!i.hasNext()) {
             throw new RuntimeException("Type of " + node + " is unknown " +
@@ -403,10 +407,37 @@ public class Neo4jStorage implements Storage {
     }
 
     private List<DataField> getDataFields(String typeId) {
-        List dataFields = new ArrayList();
+        // use as control group
+        List propNodes = new ArrayList();
         for (MetaModelProperty metaProp : getMetaClass(typeId).getDirectProperties()) {
-            dataFields.add(new DataField(getProperties(metaProp.node())));
+            propNodes.add(metaProp.node());
         }
+        //
+        List dataFields = new ArrayList();
+        for (Node node : getNodeSequence(getTypeNode(typeId))) {
+            // error check
+            if (!propNodes.contains(node)) {
+                throw new RuntimeException("Graph inconsistency for topic type \"" + typeId + "\": " +
+                    node + " appears in data field sequence but is not a meta property node");
+            }
+            //
+            dataFields.add(new Neo4jDataField(getProperties(node), node));
+        }
+        // error check
+        if (propNodes.size() != dataFields.size()) {
+            throw new RuntimeException("Graph inconsistency for topic type \"" + typeId + "\": there are " +
+                dataFields.size() + " nodes in data field sequence but " + propNodes.size() + " meta property nodes");
+        }
+        //
         return dataFields;
+    }
+
+    private Iterable<Node> getNodeSequence(Node referenceNode) {
+        TraversalDescription desc = TraversalFactory.createTraversalDescription();
+        desc = desc.relationships(RelType.SEQUENCE_START, Direction.OUTGOING);
+        desc = desc.relationships(RelType.SEQUENCE,       Direction.OUTGOING);
+        desc = desc.filter(ReturnFilter.ALL_BUT_START_NODE);
+        //
+        return desc.traverse(referenceNode).nodes();
     }
 }

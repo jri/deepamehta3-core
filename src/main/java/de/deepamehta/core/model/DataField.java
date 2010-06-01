@@ -4,6 +4,7 @@ import org.codehaus.jettison.json.JSONObject;
 import org.codehaus.jettison.json.JSONArray;
 import org.codehaus.jettison.json.JSONException;
 
+import java.util.HashMap;
 import java.util.Map;
 
 
@@ -44,6 +45,19 @@ public class DataField {
             setIndexMode(dataField.getString("index_mode"));
         }
     }
+
+    // ---
+
+    public Map<String, String> getProperties() {
+        Map<String, String> properties = new HashMap();
+        properties.put("id", id);
+        properties.put("data_type", dataType);
+        properties.put("editor", editor);
+        properties.put("index_mode", indexMode);
+        return properties;
+    }
+
+    // ---
 
     public void setId(String id) {
         this.id = id;

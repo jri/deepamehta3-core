@@ -26,14 +26,19 @@ public class TypeCache {
         if (topicType == null) {
             logger.info("Loading topic type \"" + typeId + "\" into type cache");
             topicType = dms.getTopicType(typeId);
-            topicTypes.put(typeId, topicType);
+            put(topicType);
         }
         return topicType;
     }
 
-    public void invalidate(String typeId) {
+    public void put(TopicType topicType) {
+        String typeId = topicType.getProperty("type_id");
+        topicTypes.put(typeId, topicType);
+    }
+
+    /* public void invalidate(String typeId) {
         if (topicTypes.remove(typeId) != null) {
             logger.info("Removing topic type \"" + typeId + "\" from type cache");
         }
-    }
+    } */
 }
