@@ -28,7 +28,6 @@ import java.util.logging.Logger;
 
 public class EmbeddedService implements DeepaMehtaService {
 
-    private TypeCache typeCache;
     private Map<String, DeepaMehtaPlugin> plugins = new HashMap();
 
     private Storage storage;
@@ -36,7 +35,6 @@ public class EmbeddedService implements DeepaMehtaService {
     private Logger logger = Logger.getLogger(getClass().getName());
 
     public EmbeddedService() {
-        typeCache = new TypeCache(this);
         openDB();
         Transaction tx = storage.beginTx();
         try {
@@ -385,7 +383,7 @@ public class EmbeddedService implements DeepaMehtaService {
 
     private void openDB() {
         // FIXME: make the DB path a configuration setting
-        storage = new Neo4jStorage("/Users/jri/var/db/deepamehta-db-neo4j", typeCache);
+        storage = new Neo4jStorage("/Users/jri/var/db/deepamehta-db-neo4j");
     }
 
     private void setupDB() {

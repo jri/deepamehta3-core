@@ -1,6 +1,5 @@
 package de.deepamehta.core.storage.neo4j;
 
-import de.deepamehta.core.impl.TypeCache;
 import de.deepamehta.core.model.DataField;
 import de.deepamehta.core.model.Topic;
 import de.deepamehta.core.model.TopicType;
@@ -56,9 +55,9 @@ public class Neo4jStorage implements Storage {
         SEQUENCE_START, SEQUENCE
     }
 
-    public Neo4jStorage(String dbPath, TypeCache typeCache) {
+    public Neo4jStorage(String dbPath) {
         logger.info("Creating DB and indexing services");
-        this.typeCache = typeCache;
+        this.typeCache = new TypeCache(this);
         //
         graphDb = new EmbeddedGraphDatabase(dbPath);
     }
@@ -195,46 +194,17 @@ public class Neo4jStorage implements Storage {
 
     @Override
     public TopicType getTopicType(String typeId) {
-        Map properties = getProperties(getTypeNode(typeId));
-        List<DataField> dataFields = getDataFields(typeId);
-        //
-        return new TopicType(properties, dataFields);
+        return typeCache.get(typeId);
     }
 
     @Override
     public void createTopicType(Map<String, Object> properties, List<DataField> dataFields) {
-        // create type
-        String typeId = (String) properties.get("type_id");
-        MetaModelClass metaClass = namespace.getMetaClass(typeId, true);
-        Node typeNode = metaClass.node();
-        logger.info("Creating topic type \"" + typeId + "\", ID=" + typeNode.getId());
-        // set properties
-        for (String key : properties.keySet()) {
-            typeNode.setProperty(key, properties.get(key));
-        }
-        // update cache
-        typeCache.put(new Neo4jTopicType(properties, typeNode));
-        // add data fields
-        for (DataField dataField : dataFields) {
-            addDataField(typeId, dataField);
-        }
+        typeCache.put(new Neo4jTopicType(properties, dataFields, this));
     }
 
     @Override
     public void addDataField(String typeId, DataField dataField) {
-        // create data field
-        MetaModelProperty metaProperty = namespace.getMetaProperty(dataField.id, true);
-        Node fieldNode = metaProperty.node();
-        logger.info("Creating data field \"" + dataField.id + "\", ID=" + fieldNode.getId());
-        getMetaClass(typeId).getDirectProperties().add(metaProperty);
-        // set properties
-        Map<String, String> properties = dataField.getProperties();
-        for (String key : properties.keySet()) {
-            fieldNode.setProperty(key, properties.get(key));
-        }
-        // update cache
-        TopicType topicType = typeCache.getTopicType(typeId);
-        topicType.addDataField(new Neo4jDataField(properties, fieldNode));
+        typeCache.get(typeId).addDataField(dataField);
     }
 
     // --- DB ---
@@ -289,7 +259,7 @@ public class Neo4jStorage implements Storage {
 
 
     // ***********************
-    // *** Private Helpers ***
+    // *** Package Helpers ***
     // ***********************
 
 
@@ -300,7 +270,7 @@ public class Neo4jStorage implements Storage {
         String typeId = getTypeId(node);
         // initialize label
         String label;
-        TopicType topicType = typeCache.getTopicType(typeId);
+        TopicType topicType = typeCache.get(typeId);
         String typeLabelField = topicType.getProperty("label_field");
         if (typeLabelField != null) {
             throw new RuntimeException("not yet implemented");
@@ -314,7 +284,7 @@ public class Neo4jStorage implements Storage {
 
     // --- Properties ---
 
-    private Map getProperties(PropertyContainer container) {
+    Map getProperties(PropertyContainer container) {
         Map properties = new HashMap();
         for (String key : container.getPropertyKeys()) {
             properties.put(key, container.getProperty(key));
@@ -347,7 +317,7 @@ public class Neo4jStorage implements Storage {
         // Note 1: we only index node properties. Neo4j can't index relationship properties.
         // Note 2: we only index instance nodes. Meta nodes (types and fields) are responsible for indexing themself.
         if (container instanceof Node && !typeId.equals("Topic Type") && !typeId.equals("Data Field")) {
-            DataField dataField = typeCache.getTopicType(typeId).getDataField(key);
+            DataField dataField = typeCache.get(typeId).getDataField(key);
             String indexMode = dataField.indexMode;
             if ("off".equals(indexMode)) {
                 return;
@@ -398,46 +368,15 @@ public class Neo4jStorage implements Storage {
         return type;
     }
 
-    private Node getTypeNode(String typeId) {
-        return getMetaClass(typeId).node();
-    }
-
-    private MetaModelClass getMetaClass(String typeId) {
+    MetaModelClass getMetaClass(String typeId) {
         return namespace.getMetaClass(typeId, false);
     }
 
-    private List<DataField> getDataFields(String typeId) {
-        // use as control group
-        List propNodes = new ArrayList();
-        for (MetaModelProperty metaProp : getMetaClass(typeId).getDirectProperties()) {
-            propNodes.add(metaProp.node());
-        }
-        //
-        List dataFields = new ArrayList();
-        for (Node node : getNodeSequence(getTypeNode(typeId))) {
-            // error check
-            if (!propNodes.contains(node)) {
-                throw new RuntimeException("Graph inconsistency for topic type \"" + typeId + "\": " +
-                    node + " appears in data field sequence but is not a meta property node");
-            }
-            //
-            dataFields.add(new Neo4jDataField(getProperties(node), node));
-        }
-        // error check
-        if (propNodes.size() != dataFields.size()) {
-            throw new RuntimeException("Graph inconsistency for topic type \"" + typeId + "\": there are " +
-                dataFields.size() + " nodes in data field sequence but " + propNodes.size() + " meta property nodes");
-        }
-        //
-        return dataFields;
+    MetaModelClass createMetaClass(String typeId) {
+        return namespace.getMetaClass(typeId, true);
     }
 
-    private Iterable<Node> getNodeSequence(Node referenceNode) {
-        TraversalDescription desc = TraversalFactory.createTraversalDescription();
-        desc = desc.relationships(RelType.SEQUENCE_START, Direction.OUTGOING);
-        desc = desc.relationships(RelType.SEQUENCE,       Direction.OUTGOING);
-        desc = desc.filter(ReturnFilter.ALL_BUT_START_NODE);
-        //
-        return desc.traverse(referenceNode).nodes();
+    MetaModelProperty createMetaProperty(String dataFieldId) {
+        return namespace.getMetaProperty(dataFieldId, true);
     }
 }

@@ -16,6 +16,9 @@ public class TopicType {
     public Map<String, String> properties;
     public List<DataField> dataFields;
 
+    public TopicType() {
+    }
+
     public TopicType(Map properties, List dataFields) {
         this.properties = properties;
         this.dataFields = dataFields;
