@@ -46,6 +46,27 @@ public class TopicType {
 
     // ---
 
+    public JSONObject toJSON() throws JSONException {
+        JSONObject o = new JSONObject();
+        o.put("type_id", getProperty("type_id"));
+        //
+        JSONArray fields = new JSONArray();
+        for (DataField dataField : dataFields) {
+            fields.put(dataField.toJSON());
+        }
+        o.put("fields", fields);
+        //
+        JSONObject view = new JSONObject();
+        view.put("icon_src", getProperty("icon_src"));
+        view.put("label_field", getProperty("label_field"));
+        o.put("view", view);
+        //
+        o.put("implementation", getProperty("implementation"));
+        return o;
+    }
+
+    // ---
+
     public String getProperty(String key) {
         return properties.get(key);
     }

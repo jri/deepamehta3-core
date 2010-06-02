@@ -48,6 +48,22 @@ public class DataField {
 
     // ---
 
+    public JSONObject toJSON() throws JSONException {
+        JSONObject o = new JSONObject();
+        o.put("id", id);
+        //
+        JSONObject model = new JSONObject();
+        model.put("type", dataType);
+        o.put("model", model);
+        //
+        JSONObject view = new JSONObject();
+        view.put("editor", editor);
+        o.put("view", view);
+        //
+        o.put("index_mode", indexMode);
+        return o;
+    }
+
     public Map<String, String> getProperties() {
         Map<String, String> properties = new HashMap();
         properties.put("id", id);
