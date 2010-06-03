@@ -1,21 +1,9 @@
 [
     {
-    	type_id: "Topic Type",
-        fields: [
-            {id: "type_id", model: {type: "text"}, view: {editor: "single line", label: "Type ID"}, index_mode: "id"},
-            {id: "Icon",    model: {type: "relation", related_type: "Icon"}, view: {editor: "iconpicker"}},
-            {id: "Fields",  model: {type: "field-definition"}}
-        ],
-        view: {
-            icon_src: "images/drawer.png"
-        },
-        implementation: "PlainDocument"
-    },
-    {
         type_id: "Note",
         fields: [
-            {id: "Title", model: {type: "text"}, view: {editor: "single line"}},
-            {id: "Body",  model: {type: "html"}, view: {editor: "multi line"}}
+            {id: "Title", model: {type: "text"}, view: {editor: "single line"}, indexing_mode: "FULLTEXT"},
+            {id: "Body",  model: {type: "html"}, view: {editor: "multi line"},  indexing_mode: "FULLTEXT"}
         ],
         view: {
             icon_src: "images/pencil.png"
@@ -25,18 +13,30 @@
     {
         type_id: "Search Result",
         fields: [
-            {id: "Search Term", model: {type: "text"}, view: {editor: "single line"}, index_mode: "off"}
+            {id: "Search Term", model: {type: "text"}, view: {editor: "single line"}}
         ],
         view: {
             icon_src: "images/bucket.png"
         },
         implementation: "PlainDocument"
     },
+    {
+    	type_id: "Topic Type",
+        fields: [
+            {id: "type_id", model: {type: "text"}, view: {editor: "single line", label: "Type ID"}},
+            {id: "Icon",    model: {type: "relation", related_type: "Icon"}, view: {editor: "iconpicker"}},
+            {id: "Fields",  model: {type: "field-definition"}}
+        ],
+        view: {
+            icon_src: "images/drawer.png"
+        },
+        implementation: "PlainDocument"
+    },
 	{
 		type_id: "Plugin",
         fields: [
-            {id: "plugin_id", model: {type: "text"}, view: {editor: "single line", label: "Plugin ID"}, index_mode: "id"},
-            {id: "db_model_version", model: {type: "text"}, view: {editor: "single line", label: "DB Model Version"}, index_mode: "off"}
+            {id: "plugin_id", model: {type: "text"}, view: {editor: "single line", label: "Plugin ID"}, indexing_mode: "KEY"},
+            {id: "db_model_version", model: {type: "text"}, view: {editor: "single line", label: "DB Model Version"}}
         ],
         implementation: "PlainDocument"
     }

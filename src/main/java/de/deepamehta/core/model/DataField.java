@@ -14,12 +14,12 @@ public class DataField {
     public String id;
     public String dataType;
     public String editor;
-    public String indexMode;
+    public String indexingMode;
 
     public DataField() {
         setDataType("text");
         setEditor("single line");
-        setIndexMode("fulltext");
+        setIndexingMode("OFF");
     }
 
     public DataField(String id) {
@@ -31,7 +31,7 @@ public class DataField {
         setId(properties.get("id"));
         setDataType(properties.get("data_type"));
         setEditor(properties.get("editor"));
-        setIndexMode(properties.get("index_mode"));
+        setIndexingMode(properties.get("indexing_mode"));
     }
 
     public DataField(JSONObject dataField) throws JSONException {
@@ -41,8 +41,8 @@ public class DataField {
         if (dataField.has("view")) {
             setEditor(dataField.getJSONObject("view").getString("editor"));
         }
-        if (dataField.has("index_mode")) {
-            setIndexMode(dataField.getString("index_mode"));
+        if (dataField.has("indexing_mode")) {
+            setIndexingMode(dataField.getString("indexing_mode"));
         }
     }
 
@@ -60,7 +60,7 @@ public class DataField {
         view.put("editor", editor);
         o.put("view", view);
         //
-        o.put("index_mode", indexMode);
+        o.put("indexing_mode", indexingMode);
         return o;
     }
 
@@ -69,28 +69,32 @@ public class DataField {
         properties.put("id", id);
         properties.put("data_type", dataType);
         properties.put("editor", editor);
-        properties.put("index_mode", indexMode);
+        properties.put("indexing_mode", indexingMode);
         return properties;
     }
 
     // ---
 
-    public void setId(String id) {
+    public DataField setId(String id) {
         this.id = id;
+        return this;
     }
 
     // "text" (default) / "date" / "html" / "relation"
-    public void setDataType(String dataType) {
+    public DataField setDataType(String dataType) {
         this.dataType = dataType;
+        return this;
     }
 
     // "single line" (default) / "multi line"
-    public void setEditor(String editor) {
+    public DataField setEditor(String editor) {
         this.editor = editor;
+        return this;
     }
 
-    // "fulltext" (default) / "id" / "off"
-    public void setIndexMode(String indexMode) {
-        this.indexMode = indexMode;
+    // "OFF" (default) / "KEY" / "FULLTEXT" / "FULLTEXT_KEY"
+    public DataField setIndexingMode(String indexingMode) {
+        this.indexingMode = indexingMode;
+        return this;
     }
 }

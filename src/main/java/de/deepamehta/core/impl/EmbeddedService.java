@@ -35,7 +35,11 @@ public class EmbeddedService implements DeepaMehtaService {
     private Logger logger = Logger.getLogger(getClass().getName());
 
     public EmbeddedService() {
-        openDB();
+        try {
+            openDB();
+        } catch (Throwable e) {
+            throw new RuntimeException("Database can't be opened", e);
+        }
         Transaction tx = storage.beginTx();
         try {
             setupDB();

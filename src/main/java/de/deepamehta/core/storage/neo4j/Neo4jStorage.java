@@ -317,17 +317,20 @@ public class Neo4jStorage implements Storage {
         // Note 1: we only index node properties. Neo4j can't index relationship properties.
         // Note 2: we only index instance nodes. Meta nodes (types and fields) are responsible for indexing themself.
         if (container instanceof Node && !typeId.equals("Topic Type") && !typeId.equals("Data Field")) {
+            Node node = (Node) container;
             DataField dataField = typeCache.get(typeId).getDataField(key);
-            String indexMode = dataField.indexMode;
-            if ("off".equals(indexMode)) {
+            String indexingMode = dataField.indexingMode;
+            if (indexingMode.equals("OFF")) {
                 return;
-            } else if (indexMode == null || indexMode.equals("fulltext")) {
-                fulltextIndex.index((Node) container, "default", value);
-            } else if (indexMode.equals("id")) {
-                index.index((Node) container, key, value);  // FIXME: include topic type in index key
+            } else if (indexingMode.equals("KEY")) {
+                index.index(node, key, value);  // FIXME: include topic type in index key
+            } else if (indexingMode.equals("FULLTEXT")) {
+                fulltextIndex.index(node, "default", value);
+            } else if (indexingMode.equals("FULLTEXT_KEY")) {
+                fulltextIndex.index(node, key, value);
             } else {
                 throw new RuntimeException("Data field \"" + key + "\" of type definition \"" +
-                    typeId + "\" has unexpectd index mode: \"" + indexMode + "\"");
+                    typeId + "\" has unexpectd indexing mode: \"" + indexingMode + "\"");
             }
         }
     }
