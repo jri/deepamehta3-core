@@ -89,6 +89,11 @@ public class Neo4jStorage implements Storage {
     }
 
     @Override
+    public String getTopicProperty(long topicId, String key) {
+        return (String) graphDb.getNodeById(topicId).getProperty(key, null);
+    }
+
+    @Override
     public List<Topic> getRelatedTopics(long topicId, List<String> excludeRelTypes) {
         logger.info("Getting related nodes of node " + topicId);
         List topics = new ArrayList();
@@ -103,12 +108,15 @@ public class Neo4jStorage implements Storage {
     }
 
     @Override
-    public List<Topic> searchTopics(String searchTerm) {
-        IndexHits<Node> hits = fulltextIndex.getNodes("default", searchTerm + "*"); // FIXME: do more itelligent manipulation on the search term
+    public List<Topic> searchTopics(String searchTerm, String fieldId, boolean wholeWord) {
+        if (fieldId == null) fieldId = "default";
+        if (!wholeWord) searchTerm += "*";
+        IndexHits<Node> hits = fulltextIndex.getNodes(fieldId, searchTerm);
         logger.info("Searching \"" + searchTerm + "\" => " + hits.size() + " nodes found");
         List result = new ArrayList();
         for (Node node : hits) {
-            result.add(new Topic(node.getId(), null, null, null));  // FIXME: type, label, and properties remain uninitialized
+            // FIXME: type, label, and properties remain uninitialized
+            result.add(new Topic(node.getId(), null, null, null));
         }
         return result;
     }
@@ -248,12 +256,12 @@ public class Neo4jStorage implements Storage {
 
     @Override
     public int getDbModelVersion() {
-        return (Integer) graphDb.getReferenceNode().getProperty("db_model_version");
+        return Integer.parseInt((String) graphDb.getReferenceNode().getProperty("db_model_version"));
     }
 
     @Override
     public void setDbModelVersion(int dbModelVersion) {
-        graphDb.getReferenceNode().setProperty("db_model_version", dbModelVersion);
+        graphDb.getReferenceNode().setProperty("db_model_version", String.valueOf(dbModelVersion));
     }
 
 
@@ -278,8 +286,9 @@ public class Neo4jStorage implements Storage {
             String fieldId = topicType.getDataField(0).id;
             label = (String) node.getProperty(fieldId);
         }
-        //
-        return new Topic(node.getId(), typeId, label, null);    // FIXME: properties remain uninitialized
+        // Note: the properties remain uninitialzed here.
+        // It is up to the plugins to provide selected properties (see provideData() hook).
+        return new Topic(node.getId(), typeId, label, new HashMap());
     }
 
     // --- Properties ---

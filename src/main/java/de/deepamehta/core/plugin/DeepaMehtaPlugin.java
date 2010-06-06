@@ -58,6 +58,14 @@ public class DeepaMehtaPlugin implements BundleActivator {
         return (Migration) pluginBundle.loadClass(migrationClassName).newInstance();
     }
 
+    protected DeepaMehtaService getService() {
+        // DeepaMehtaService dms = (DeepaMehtaService) deepamehtaServiceTracker.getService();
+        if (dms == null) {
+            throw new RuntimeException("DeepaMehta core service is currently not available");
+        }
+        return dms;
+    }
+
 
 
     // **************************************
@@ -108,6 +116,9 @@ public class DeepaMehtaPlugin implements BundleActivator {
     }
 
     public void preUpdateHook(Topic topic) {
+    }
+
+    public void provideData(Topic topic) {
     }
 
 
@@ -208,7 +219,7 @@ public class DeepaMehtaPlugin implements BundleActivator {
             logger.info("Creating topic for plugin \"" + pluginName + "\"");
             Map properties = new HashMap();
             properties.put("plugin_id", pluginId);
-            properties.put("db_model_version", 0);
+            properties.put("db_model_version", "0");
             pluginTopic = dms.createTopic("Plugin", properties);
         }
     }
@@ -231,7 +242,7 @@ public class DeepaMehtaPlugin implements BundleActivator {
     }
 
     private void runPluginMigrations() {
-        int dbModelVersion = (Integer) pluginTopic.getProperty("db_model_version");
+        int dbModelVersion = Integer.parseInt(pluginTopic.getProperty("db_model_version"));
         int requiredDbModelVersion = requiredDBModelVersion();
         int migrationsToRun = requiredDbModelVersion - dbModelVersion;
         logger.info("dbModelVersion=" + dbModelVersion + ", requiredDbModelVersion=" + requiredDbModelVersion +

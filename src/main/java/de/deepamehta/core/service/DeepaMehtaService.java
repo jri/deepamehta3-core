@@ -23,9 +23,18 @@ public interface DeepaMehtaService {
 
     public Topic getTopic(String key, Object value);
 
+    public String getTopicProperty(long topicId, String key);
+
     public List<Topic> getRelatedTopics(long topicId, List<String> excludeRelTypes);
 
-    public Topic searchTopics(String searchTerm);
+    /**
+     * Performs a fulltext search.
+     *
+     * @param   fieldId     The ID of the data field to search. If null is provided all fields are searched.
+     * @param   wholeWord   If true the searchTerm is regarded as whole word.
+     *                      If false the searchTerm is regarded as begin-of-word substring.
+     */
+    public Topic searchTopics(String searchTerm, String fieldId, boolean wholeWord);
 
     public Topic createTopic(String typeId, Map properties);
 

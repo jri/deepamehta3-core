@@ -7,12 +7,15 @@ import java.util.Map;
 
 
 
+/**
+ * A topic data transfer object.
+ */
 public class Topic {
 
     public long id;
     public String typeId;                   // FIXME: might be uninitialized.
     public String label;
-    public Map<String, Object> properties;  // FIXME: might be uninitialized.
+    public Map<String, String> properties;  // FIXME: might be uninitialized.
 
     public Topic(long id, String typeId, String label, Map properties) {
         this.id = id;
@@ -23,14 +26,14 @@ public class Topic {
 
     // ---
 
-    public Object getProperty(String key) {
+    public String getProperty(String key) {
         if (properties == null) {
             throw new RuntimeException("Properties of topic " + this + " are not initialized");
         }
         return properties.get(key);
     }
 
-    public void setProperty(String key, Object value) {
+    public void setProperty(String key, String value) {
         properties.put(key, value);
     }
 

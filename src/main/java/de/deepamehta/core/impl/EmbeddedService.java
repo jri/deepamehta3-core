@@ -97,12 +97,33 @@ public class EmbeddedService implements DeepaMehtaService {
     }
 
     @Override
+    public String getTopicProperty(long topicId, String key) {
+        String value = null;
+        Transaction tx = storage.beginTx();
+        try {
+            value = storage.getTopicProperty(topicId, key);
+            tx.success();   
+        } catch (Throwable e) {
+            e.printStackTrace();
+            logger.warning("ROLLBACK!");
+        } finally {
+            tx.finish();
+            return value;
+        }
+    }
+
+    @Override
     public List<Topic> getRelatedTopics(long topicId, List<String> excludeRelTypes) {
-        List topics = null;
+        List<Topic> topics = null;
         Transaction tx = storage.beginTx();
         try {
             topics = storage.getRelatedTopics(topicId, excludeRelTypes);
-            tx.success();   
+            //
+            for (Topic topic : topics) {
+                triggerHook("provideData", topic);
+            }
+            //
+            tx.success();
         } catch (Throwable e) {
             e.printStackTrace();
             logger.warning("ROLLBACK!");
@@ -113,11 +134,11 @@ public class EmbeddedService implements DeepaMehtaService {
     }
 
     @Override
-    public Topic searchTopics(String searchTerm) {
+    public Topic searchTopics(String searchTerm, String fieldId, boolean wholeWord) {
         Topic resultTopic = null;
         Transaction tx = storage.beginTx();
         try {
-            List<Topic> searchResult = storage.searchTopics(searchTerm);
+            List<Topic> searchResult = storage.searchTopics(searchTerm, fieldId, wholeWord);
             // create result topic (a bucket)
             Map properties = new HashMap();
             properties.put("Search Term", searchTerm);
@@ -143,6 +164,7 @@ public class EmbeddedService implements DeepaMehtaService {
         Transaction tx = storage.beginTx();
         try {
             Topic t = new Topic(-1, typeId, null, properties);
+            //
             triggerHook("preCreateHook", t);
             //
             topic = storage.createTopic(t.typeId, t.properties);
@@ -379,7 +401,7 @@ public class EmbeddedService implements DeepaMehtaService {
 
     private void updatePluginDbModelVersion(DeepaMehtaPlugin plugin, int dbModelVersion) {
         Map properties = new HashMap();
-        properties.put("db_model_version", dbModelVersion);
+        properties.put("db_model_version", String.valueOf(dbModelVersion));
         setTopicProperties(plugin.getPluginTopic().id, properties);
     }
 
