@@ -32,7 +32,7 @@ public class DeepaMehtaPlugin implements BundleActivator {
     private boolean isActivated;
 
     private ServiceTracker deepamehtaServiceTracker;
-    private DeepaMehtaService dms;
+    protected DeepaMehtaService dms;
 
     private ServiceTracker httpServiceTracker;
     private HttpService httpService;
@@ -58,6 +58,7 @@ public class DeepaMehtaPlugin implements BundleActivator {
         return (Migration) pluginBundle.loadClass(migrationClassName).newInstance();
     }
 
+    // ### FIXME: drop method and make dms protected instead?
     protected DeepaMehtaService getService() {
         // DeepaMehtaService dms = (DeepaMehtaService) deepamehtaServiceTracker.getService();
         if (dms == null) {
@@ -112,11 +113,25 @@ public class DeepaMehtaPlugin implements BundleActivator {
         return null;
     }
 
-    public void preCreateHook(Topic topic) {
+    // ---
+
+    // Note: HashMap is used instead of Map in order to let our simple hook reflection mechanism
+    // find this method. See EmbeddedService.triggerHook()
+    public void preCreateHook(Topic topic, HashMap clientContext) {
+    }
+
+    // Note: HashMap is used instead of Map in order to let our simple hook reflection mechanism
+    // find this method. See EmbeddedService.triggerHook()
+    public void postCreateHook(Topic topic, HashMap clientContext) {
     }
 
     public void preUpdateHook(Topic topic) {
     }
+
+    public void postUpdateHook(Topic topic) {
+    }
+
+    // ---
 
     public void provideData(Topic topic) {
     }
@@ -220,7 +235,7 @@ public class DeepaMehtaPlugin implements BundleActivator {
             Map properties = new HashMap();
             properties.put("plugin_id", pluginId);
             properties.put("db_model_version", "0");
-            pluginTopic = dms.createTopic("Plugin", properties);
+            pluginTopic = dms.createTopic("Plugin", properties, new HashMap());     // FIXME: clientContext is empty
         }
     }
 

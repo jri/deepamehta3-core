@@ -24,7 +24,7 @@
     	type_id: "Topic Type",
         fields: [
             {id: "type_id", model: {type: "text"}, view: {editor: "single line", label: "Type ID"}},
-            {id: "Icon",    model: {type: "relation", related_type: "Icon"}, view: {editor: "iconpicker"}},
+            {id: "Icon",    model: {type: "relation", related_type_id: "Icon"}, view: {editor: "iconpicker"}},
             {id: "Fields",  model: {type: "field-definition"}}
         ],
         view: {

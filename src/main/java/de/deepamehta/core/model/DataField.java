@@ -13,6 +13,7 @@ public class DataField {
     
     public String id;
     public String dataType;
+    public String relatedTypeId;    // used for dataType="relation" fields
     public String editor;
     public String indexingMode;
 
@@ -30,6 +31,7 @@ public class DataField {
     public DataField(Map<String, String> properties) {
         setId(properties.get("id"));
         setDataType(properties.get("data_type"));
+        setRelatedTypeId(properties.get("related_type_id"));
         setEditor(properties.get("editor"));
         setIndexingMode(properties.get("indexing_mode"));
     }
@@ -38,6 +40,9 @@ public class DataField {
         this();
         setId(dataField.getString("id"));
         setDataType(dataField.getJSONObject("model").getString("type"));
+        if (dataType.equals("relation")) {
+            setRelatedTypeId(dataField.getJSONObject("model").getString("related_type_id"));
+        }
         if (dataField.has("view")) {
             setEditor(dataField.getJSONObject("view").getString("editor"));
         }
@@ -54,6 +59,9 @@ public class DataField {
         //
         JSONObject model = new JSONObject();
         model.put("type", dataType);
+        if (dataType.equals("relation")) {
+            model.put("related_type_id", relatedTypeId);
+        }
         o.put("model", model);
         //
         JSONObject view = new JSONObject();
@@ -68,6 +76,9 @@ public class DataField {
         Map<String, String> properties = new HashMap();
         properties.put("id", id);
         properties.put("data_type", dataType);
+        if (dataType.equals("relation")) {
+            properties.put("related_type_id", relatedTypeId);
+        }
         properties.put("editor", editor);
         properties.put("indexing_mode", indexingMode);
         return properties;
@@ -83,6 +94,12 @@ public class DataField {
     // "text" (default) / "date" / "html" / "relation"
     public DataField setDataType(String dataType) {
         this.dataType = dataType;
+        return this;
+    }
+
+    // used for dataType="relation" fields
+    public DataField setRelatedTypeId(String relatedTypeId) {
+        this.relatedTypeId = relatedTypeId;
         return this;
     }
 

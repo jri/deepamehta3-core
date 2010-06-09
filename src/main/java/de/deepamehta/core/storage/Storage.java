@@ -21,6 +21,8 @@ public interface Storage {
 
     public String getTopicProperty(long topicId, String key);
 
+    public List<Topic> getTopics(String typeId);
+
     public List<Topic> getRelatedTopics(long topicId, List<String> excludeRelTypes);
 
     public List<Topic> searchTopics(String searchTerm, String fieldId, boolean wholeWord);

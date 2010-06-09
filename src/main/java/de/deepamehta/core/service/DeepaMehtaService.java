@@ -25,6 +25,8 @@ public interface DeepaMehtaService {
 
     public String getTopicProperty(long topicId, String key);
 
+    public List<Topic> getTopics(String typeId);
+
     public List<Topic> getRelatedTopics(long topicId, List<String> excludeRelTypes);
 
     /**
@@ -36,7 +38,7 @@ public interface DeepaMehtaService {
      */
     public Topic searchTopics(String searchTerm, String fieldId, boolean wholeWord);
 
-    public Topic createTopic(String typeId, Map properties);
+    public Topic createTopic(String typeId, Map properties, Map clientContext);
 
     public void setTopicProperties(long id, Map properties);
 

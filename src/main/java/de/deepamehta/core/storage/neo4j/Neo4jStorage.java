@@ -94,6 +94,11 @@ public class Neo4jStorage implements Storage {
     }
 
     @Override
+    public List<Topic> getTopics(String typeId) {
+        return new ArrayList(getMetaClass(typeId).getDirectInstances());
+    }
+
+    @Override
     public List<Topic> getRelatedTopics(long topicId, List<String> excludeRelTypes) {
         logger.info("Getting related nodes of node " + topicId);
         List topics = new ArrayList();

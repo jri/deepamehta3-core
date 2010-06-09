@@ -113,6 +113,27 @@ public class EmbeddedService implements DeepaMehtaService {
     }
 
     @Override
+    public List<Topic> getTopics(String typeId) {
+        List<Topic> topics = null;
+        Transaction tx = storage.beginTx();
+        try {
+            topics = storage.getTopics(typeId);
+            //
+            for (Topic topic : topics) {
+                triggerHook("provideData", topic);
+            }
+            //
+            tx.success();
+        } catch (Throwable e) {
+            e.printStackTrace();
+            logger.warning("ROLLBACK!");
+        } finally {
+            tx.finish();
+            return topics;
+        }
+    }
+
+    @Override
     public List<Topic> getRelatedTopics(long topicId, List<String> excludeRelTypes) {
         List<Topic> topics = null;
         Transaction tx = storage.beginTx();
@@ -142,7 +163,7 @@ public class EmbeddedService implements DeepaMehtaService {
             // create result topic (a bucket)
             Map properties = new HashMap();
             properties.put("Search Term", searchTerm);
-            resultTopic = createTopic("Search Result", properties);
+            resultTopic = createTopic("Search Result", properties, null);
             // associate result topics
             for (Topic topic : searchResult) {
                 createRelation("SEARCH_RESULT", resultTopic.id, topic.id, new HashMap());
@@ -159,22 +180,30 @@ public class EmbeddedService implements DeepaMehtaService {
     }
 
     @Override
-    public Topic createTopic(String typeId, Map properties) {
-        Topic topic = null;
+    public Topic createTopic(String typeId, Map properties, Map clientContext) {
+        Topic newTopic = null;
+        RuntimeException ex = null;
         Transaction tx = storage.beginTx();
         try {
-            Topic t = new Topic(-1, typeId, null, properties);
+            Topic topic = new Topic(-1, typeId, null, properties);
             //
-            triggerHook("preCreateHook", t);
+            triggerHook("preCreateHook", topic, clientContext);
             //
-            topic = storage.createTopic(t.typeId, t.properties);
+            newTopic = storage.createTopic(topic.typeId, topic.properties);
+            //
+            triggerHook("postCreateHook", newTopic, clientContext);
+            //
             tx.success();
         } catch (Throwable e) {
-            e.printStackTrace();
             logger.warning("ROLLBACK!");
+            ex = new RuntimeException("Topic can't be created (type=" + typeId + ")", e);
         } finally {
             tx.finish();
-            return topic;
+            if (ex == null) {
+                return newTopic;
+            } else {
+                throw ex;
+            }
         }
     }
 
@@ -347,7 +376,7 @@ public class EmbeddedService implements DeepaMehtaService {
 
     @Override
     public void runPluginMigration(DeepaMehtaPlugin plugin, int migrationNr) throws RuntimeException {
-        RuntimeException re = null;
+        RuntimeException ex = null;
         Transaction tx = storage.beginTx();
         try {
             Migration migration = plugin.getMigration(migrationNr);
@@ -361,10 +390,10 @@ public class EmbeddedService implements DeepaMehtaService {
             tx.success();
         } catch (Throwable e) {
             logger.warning("ROLLBACK!");
-            re = new RuntimeException("Plugin migration can't run", e);
+            ex = new RuntimeException("Plugin migration can't run", e);
         } finally {
             tx.finish();
-            if (re != null) throw re;
+            if (ex != null) throw ex;
         }
     }
 
@@ -385,17 +414,20 @@ public class EmbeddedService implements DeepaMehtaService {
 
     // --- Plugins ---
 
-    private void triggerHook(String hookName, Object... args) throws NoSuchMethodException,
-                                                                     IllegalAccessException,
-                                                                     InvocationTargetException {
-        Class[] argClasses = new Class[args.length];
-        for (int i = 0; i < args.length; i++) {
-            argClasses[i] = args[i].getClass();
+    private void triggerHook(String hookName, Object... params) throws NoSuchMethodException,
+                                                                       IllegalAccessException,
+                                                                       InvocationTargetException {
+        Class[] paramClasses = new Class[params.length];
+        for (int i = 0; i < params.length; i++) {
+            if (params[i] == null) {
+                throw new NullPointerException("Parameter " + i + " of hook call \"" + hookName + "\" is null");
+            }
+            paramClasses[i] = params[i].getClass();
         }
         //
         for (DeepaMehtaPlugin plugin : plugins.values()) {
-            Method hook = plugin.getClass().getMethod(hookName, argClasses);
-            hook.invoke(plugin, args);
+            Method hook = plugin.getClass().getMethod(hookName, paramClasses);
+            hook.invoke(plugin, params);
         }
     }
 
