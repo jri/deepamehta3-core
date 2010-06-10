@@ -27,7 +27,7 @@ public interface DeepaMehtaService {
 
     public List<Topic> getTopics(String typeId);
 
-    public List<Topic> getRelatedTopics(long topicId, List<String> excludeRelTypes);
+    public List<Topic> getRelatedTopics(long topicId, List<String> includeTopicTypes, List<String> excludeRelTypes);
 
     /**
      * Performs a fulltext search.

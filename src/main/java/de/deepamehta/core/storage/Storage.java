@@ -23,7 +23,7 @@ public interface Storage {
 
     public List<Topic> getTopics(String typeId);
 
-    public List<Topic> getRelatedTopics(long topicId, List<String> excludeRelTypes);
+    public List<Topic> getRelatedTopics(long topicId, List<String> includeTopicTypes, List<String> excludeRelTypes);
 
     public List<Topic> searchTopics(String searchTerm, String fieldId, boolean wholeWord);
 

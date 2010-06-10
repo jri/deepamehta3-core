@@ -37,7 +37,7 @@ class Neo4jTopicType extends TopicType {
         String typeId = (String) properties.get("type_id");
         MetaModelClass metaClass = storage.createMetaClass(typeId);
         this.typeNode = metaClass.node();
-        logger.info("Creating topic type \"" + typeId + "\", ID=" + typeNode.getId());
+        logger.info("Creating topic type \"" + typeId + "\" => ID=" + typeNode.getId());
         // set properties
         for (String key : properties.keySet()) {
             typeNode.setProperty(key, properties.get(key));
@@ -52,6 +52,7 @@ class Neo4jTopicType extends TopicType {
      * Reads a topic type from the database.
      */
     Neo4jTopicType(String typeId, Neo4jStorage storage) {
+        super(null, null);
         this.storage = storage;
         this.typeNode = getTypeNode(typeId);
         this.properties = storage.getProperties(typeNode);
@@ -62,11 +63,12 @@ class Neo4jTopicType extends TopicType {
 
     @Override
     public void addDataField(DataField dataField) {
+        String typeId = (String) properties.get("type_id");
         // create data field
         MetaModelProperty metaProperty = storage.createMetaProperty(dataField.id);
         Node fieldNode = metaProperty.node();
-        logger.info("Creating data field \"" + dataField.id + "\", ID=" + fieldNode.getId());
-        String typeId = (String) properties.get("type_id");
+        logger.info("Creating data field \"" + dataField.id + "\" for topic type \"" +
+            typeId + "\" => ID=" + fieldNode.getId());
         storage.getMetaClass(typeId).getDirectProperties().add(metaProperty);
         // set properties
         Map<String, String> properties = dataField.getProperties();

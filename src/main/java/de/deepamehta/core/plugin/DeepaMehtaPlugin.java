@@ -81,7 +81,7 @@ public class DeepaMehtaPlugin implements BundleActivator {
         pluginName = (String) pluginBundle.getHeaders().get("Bundle-Name");
         pluginClass = (String) pluginBundle.getHeaders().get("Bundle-Activator");
         //
-        logger.info("----- Starting DeepaMehta plugin bundle \"" + pluginName + "\" -----");
+        logger.info("---------- Starting DeepaMehta plugin bundle \"" + pluginName + "\" ----------");
         //
         deepamehtaServiceTracker = createDeepamehtaServiceTracker(context);
         deepamehtaServiceTracker.open();
@@ -91,7 +91,7 @@ public class DeepaMehtaPlugin implements BundleActivator {
     }
 
     public void stop(BundleContext context) {
-        logger.info("----- Stopping DeepaMehta plugin bundle \"" + pluginName + "\" -----");
+        logger.info("---------- Stopping DeepaMehta plugin bundle \"" + pluginName + "\" ----------");
         //
         deepamehtaServiceTracker.close();
         httpServiceTracker.close();
@@ -115,14 +115,10 @@ public class DeepaMehtaPlugin implements BundleActivator {
 
     // ---
 
-    // Note: HashMap is used instead of Map in order to let our simple hook reflection mechanism
-    // find this method. See EmbeddedService.triggerHook()
-    public void preCreateHook(Topic topic, HashMap clientContext) {
+    public void preCreateHook(Topic topic, Map<String, String> clientContext) {
     }
 
-    // Note: HashMap is used instead of Map in order to let our simple hook reflection mechanism
-    // find this method. See EmbeddedService.triggerHook()
-    public void postCreateHook(Topic topic, HashMap clientContext) {
+    public void postCreateHook(Topic topic, Map<String, String> clientContext) {
     }
 
     public void preUpdateHook(Topic topic) {
@@ -133,7 +129,7 @@ public class DeepaMehtaPlugin implements BundleActivator {
 
     // ---
 
-    public void provideData(Topic topic) {
+    public void provideDataHook(Topic topic) {
     }
 
 
@@ -235,7 +231,7 @@ public class DeepaMehtaPlugin implements BundleActivator {
             Map properties = new HashMap();
             properties.put("plugin_id", pluginId);
             properties.put("db_model_version", "0");
-            pluginTopic = dms.createTopic("Plugin", properties, new HashMap());     // FIXME: clientContext is empty
+            pluginTopic = dms.createTopic("Plugin", properties, null);     // FIXME: clientContext=null
         }
     }
 
@@ -247,6 +243,7 @@ public class DeepaMehtaPlugin implements BundleActivator {
 
     private void initPlugin() {
         try {
+            logger.info("----- Initializing plugin \"" + pluginName + "\" -----");
             initPluginTopic();
             runPluginMigrations();
             registerPlugin();

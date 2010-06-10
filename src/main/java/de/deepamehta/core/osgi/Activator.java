@@ -29,19 +29,19 @@ public class Activator implements BundleActivator {
 
     public void start(BundleContext context) {
         try {
-            logger.info("----- Starting DeepaMehta core bundle -----");
+            logger.info("---------- Starting bundle \"DeepaMehta 3 Core\" ----------");
             service = new EmbeddedService();
             //
             logger.info("Registering DeepaMehta core service");
             context.registerService(DeepaMehtaService.class.getName(), service, null);
-        } catch (Throwable e) {
-            e.printStackTrace();
-            logger.severe("DeepaMehta core service is not available");
+        } catch (RuntimeException e) {
+            logger.severe("DeepaMehta core service is not available. Reason:");
+            throw e;
         }
     }
 
     public void stop(BundleContext context) {
-        logger.info("----- Stopping DeepaMehta core bundle -----");
+        logger.info("---------- Stopping bundle \"DeepaMehta 3 Core\" ----------");
         if (service != null) {
             service.shutdown();
         }

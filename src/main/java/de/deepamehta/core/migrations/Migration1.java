@@ -17,22 +17,18 @@ import java.io.IOException;
 
 public class Migration1 extends Migration {
 
-    public void run() {
-        try {
-            InputStream is = getClass().getResourceAsStream("/types.json");
-            if (is == null) {
-                throw new RuntimeException("Resource /types.json not found");
-            }
-            BufferedReader in = new BufferedReader(new InputStreamReader(is));
-            String line;
-            StringBuilder json = new StringBuilder();
-            while ((line = in.readLine()) != null) {
-                json.append(line);
-            }
-            createTypes(json.toString());
-        } catch (Throwable e) {
-            throw new RuntimeException("ERROR while processing /types.json", e);
+    public void run() throws Exception {
+        InputStream is = getClass().getResourceAsStream("/types.json");
+        if (is == null) {
+            throw new RuntimeException("Resource /types.json not found");
         }
+        BufferedReader in = new BufferedReader(new InputStreamReader(is));
+        String line;
+        StringBuilder json = new StringBuilder();
+        while ((line = in.readLine()) != null) {
+            json.append(line);
+        }
+        createTypes(json.toString());
     }
 
     private void createTypes(String json) throws JSONException {

@@ -11,31 +11,27 @@ import java.util.Map;
 
 
 
-public class TopicType {
+public class TopicType extends Topic {
 
-    public Map<String, String> properties;
     public List<DataField> dataFields;
 
-    public TopicType() {
-    }
-
     public TopicType(Map properties, List dataFields) {
-        this.properties = properties;
+        super(-1, "Topic Type", null, properties);      // id and label remain uninitialized
         this.dataFields = dataFields;
     }
 
     public TopicType(JSONObject type) throws JSONException {
+        super(-1, "Topic Type", null, new HashMap());   // id and label remain uninitialized
         // initialize properties
-        properties = new HashMap();
-        properties.put("type_id", type.getString("type_id"));
+        setProperty("type_id", type.getString("type_id"));
         if (type.has("view")) {
             JSONObject view = type.getJSONObject("view");
-            properties.put("icon_src", view.getString("icon_src"));
+            setProperty("icon_src", view.getString("icon_src"));
             if (view.has("label_field")) {
-                properties.put("label_field", view.getString("label_field"));
+                setProperty("label_field", view.getString("label_field"));
             }
         }
-        properties.put("implementation", type.getString("implementation"));
+        setProperty("implementation", type.getString("implementation"));
         // initialize data fields
         dataFields = new ArrayList();
         JSONArray fieldDefs = type.getJSONArray("fields");
@@ -46,6 +42,7 @@ public class TopicType {
 
     // ---
 
+    @Override
     public JSONObject toJSON() throws JSONException {
         JSONObject o = new JSONObject();
         o.put("type_id", getProperty("type_id"));
@@ -66,10 +63,6 @@ public class TopicType {
     }
 
     // ---
-
-    public String getProperty(String key) {
-        return properties.get(key);
-    }
 
     public DataField getDataField(int index) {
         return dataFields.get(index);

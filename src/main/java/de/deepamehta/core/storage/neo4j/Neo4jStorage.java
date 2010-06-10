@@ -50,6 +50,7 @@ public class Neo4jStorage implements Storage {
     //
     private final TypeCache typeCache;
 
+    // SEARCH_RESULT relations are not part of the knowledge base but help to visualize / navigate result sets.
     static enum RelType implements RelationshipType {
         RELATION, SEARCH_RESULT,
         SEQUENCE_START, SEQUENCE
@@ -74,7 +75,7 @@ public class Neo4jStorage implements Storage {
 
     @Override
     public Topic getTopic(long id) {
-        logger.info("Getting node " + id);
+        logger.info("Getting topic " + id);
         Node node = graphDb.getNodeById(id);
         // FIXME: label remains uninitialized
         return new Topic(id, getTypeId(node), null, getProperties(node));
@@ -82,7 +83,7 @@ public class Neo4jStorage implements Storage {
 
     @Override
     public Topic getTopic(String key, Object value) {
-        logger.info("Getting node with " + key + "=" + value);
+        logger.info("Getting topic by property (" + key + "=" + value + ")");
         Node node = index.getSingleNode(key, value);
         // FIXME: type and label remain uninitialized
         return node != null ? new Topic(node.getId(), null, null, getProperties(node)) : null;
@@ -95,18 +96,26 @@ public class Neo4jStorage implements Storage {
 
     @Override
     public List<Topic> getTopics(String typeId) {
-        return new ArrayList(getMetaClass(typeId).getDirectInstances());
+        List topics = new ArrayList();
+        for (Node node : getMetaClass(typeId).getDirectInstances()) {
+            topics.add(buildTopic(node));
+        }
+        return topics;
     }
 
     @Override
-    public List<Topic> getRelatedTopics(long topicId, List<String> excludeRelTypes) {
-        logger.info("Getting related nodes of node " + topicId);
+    public List<Topic> getRelatedTopics(long topicId, List<String> includeTopicTypes, List<String> excludeRelTypes) {
+        logger.info("Getting related topics of topic " + topicId);
         List topics = new ArrayList();
         Node node = graphDb.getNodeById(topicId);
         for (Relationship rel : node.getRelationships()) {
+            // apply relation type filter
             if (!excludeRelTypes.contains(rel.getType().name())) {
                 Node relNode = rel.getOtherNode(node);
-                topics.add(buildTopic(relNode));
+                // apply topic type filter
+                if (includeTopicTypes.isEmpty() || includeTopicTypes.contains(getTypeId(relNode))) {
+                    topics.add(buildTopic(relNode));
+                }
             }
         }
         return topics;
@@ -117,7 +126,7 @@ public class Neo4jStorage implements Storage {
         if (fieldId == null) fieldId = "default";
         if (!wholeWord) searchTerm += "*";
         IndexHits<Node> hits = fulltextIndex.getNodes(fieldId, searchTerm);
-        logger.info("Searching \"" + searchTerm + "\" => " + hits.size() + " nodes found");
+        logger.info("Searching \"" + searchTerm + "\" => " + hits.size() + " topics found");
         List result = new ArrayList();
         for (Node node : hits) {
             // FIXME: type, label, and properties remain uninitialized
@@ -129,7 +138,7 @@ public class Neo4jStorage implements Storage {
     @Override
     public Topic createTopic(String typeId, Map properties) {
         Node node = graphDb.createNode();
-        logger.info("Creating node, ID=" + node.getId());
+        logger.info("Creating topic => ID=" + node.getId());
         // setNodeType(node, typeId);
         getMetaClass(typeId).getDirectInstances().add(node);
         setProperties(node, properties, typeId);
@@ -138,14 +147,14 @@ public class Neo4jStorage implements Storage {
 
     @Override
     public void setTopicProperties(long id, Map properties) {
-        logger.info("Setting properties of node " + id + ": " + properties.toString());
+        logger.info("Setting properties of topic " + id + ": " + properties.toString());
         Node node = graphDb.getNodeById(id);
         setProperties(node, properties);
     }
 
     @Override
     public void deleteTopic(long id) {
-        logger.info("Deleting node " + id);
+        logger.info("Deleting topic " + id);
         Node node = graphDb.getNodeById(id);
         // delete relationships
         for (Relationship rel : node.getRelationships()) {
@@ -159,7 +168,7 @@ public class Neo4jStorage implements Storage {
 
     @Override
     public Relation getRelation(long srcTopicId, long dstTopicId) {
-        logger.info("Getting relationship between nodes " + srcTopicId + " and " + dstTopicId);
+        logger.info("Getting relationship between topics " + srcTopicId + " and " + dstTopicId);
         Relationship relationship = null;
         Node node = graphDb.getNodeById(srcTopicId);
         for (Relationship rel : node.getRelationships()) {
@@ -180,7 +189,7 @@ public class Neo4jStorage implements Storage {
 
     @Override
     public Relation createRelation(String typeId, long srcTopicId, long dstTopicId, Map properties) {
-        logger.info("Creating \"" + typeId + "\" relationship from node " + srcTopicId + " to " + dstTopicId);
+        logger.info("Creating \"" + typeId + "\" relationship from topic " + srcTopicId + " to " + dstTopicId);
         Node srcNode = graphDb.getNodeById(srcTopicId);
         Node dstNode = graphDb.getNodeById(dstTopicId);
         Relationship relationship = srcNode.createRelationshipTo(dstNode, RelType.valueOf(typeId));
@@ -292,7 +301,7 @@ public class Neo4jStorage implements Storage {
             label = (String) node.getProperty(fieldId);
         }
         // Note: the properties remain uninitialzed here.
-        // It is up to the plugins to provide selected properties (see provideData() hook).
+        // It is up to the plugins to provide selected properties (see provideDataHook()).
         return new Topic(node.getId(), typeId, label, new HashMap());
     }
 

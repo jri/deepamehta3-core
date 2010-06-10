@@ -10,6 +10,6 @@ public class Migration {
         this.dms = dms;
     }
 
-    public void run() {
+    public void run() throws Exception {
     }
 }

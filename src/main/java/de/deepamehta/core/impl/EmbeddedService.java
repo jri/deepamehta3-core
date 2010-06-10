@@ -32,6 +32,24 @@ public class EmbeddedService implements DeepaMehtaService {
 
     private Storage storage;
 
+    private enum Hook {
+
+        PRE_CREATE("preCreateHook", Topic.class, Map.class),
+        POST_CREATE("postCreateHook", Topic.class, Map.class),
+        PRE_UPDATE("preUpdateHook", Topic.class),
+        POST_UPDATE("postUpdateHook", Topic.class),
+
+        PROVIDE_DATA("provideDataHook", Topic.class);
+
+        private final String name;
+        private final Class[] paramClasses;
+
+        private Hook(String name, Class... paramClasses) {
+            this.name = name;
+            this.paramClasses = paramClasses;
+        }
+    }
+
     private Logger logger = Logger.getLogger(getClass().getName());
 
     public EmbeddedService() {
@@ -40,17 +58,22 @@ public class EmbeddedService implements DeepaMehtaService {
         } catch (Throwable e) {
             throw new RuntimeException("Database can't be opened", e);
         }
+        //
+        RuntimeException ex = null;
         Transaction tx = storage.beginTx();
         try {
             setupDB();
             runCoreMigrations();
             tx.success();   
         } catch (Throwable e) {
-            e.printStackTrace();
             logger.warning("ROLLBACK!");
-            closeDB();
+            ex = new RuntimeException("Database can't be initialized", e);
         } finally {
             tx.finish();
+            if (ex != null) {
+                closeDB();
+                throw ex;
+            }
         }
     }
 
@@ -120,7 +143,7 @@ public class EmbeddedService implements DeepaMehtaService {
             topics = storage.getTopics(typeId);
             //
             for (Topic topic : topics) {
-                triggerHook("provideData", topic);
+                triggerHook(Hook.PROVIDE_DATA, topic);
             }
             //
             tx.success();
@@ -134,23 +157,28 @@ public class EmbeddedService implements DeepaMehtaService {
     }
 
     @Override
-    public List<Topic> getRelatedTopics(long topicId, List<String> excludeRelTypes) {
+    public List<Topic> getRelatedTopics(long topicId, List<String> includeTopicTypes, List<String> excludeRelTypes) {
         List<Topic> topics = null;
+        RuntimeException ex = null;
         Transaction tx = storage.beginTx();
         try {
-            topics = storage.getRelatedTopics(topicId, excludeRelTypes);
+            topics = storage.getRelatedTopics(topicId, includeTopicTypes, excludeRelTypes);
             //
             for (Topic topic : topics) {
-                triggerHook("provideData", topic);
+                triggerHook(Hook.PROVIDE_DATA, topic);
             }
             //
             tx.success();
         } catch (Throwable e) {
-            e.printStackTrace();
             logger.warning("ROLLBACK!");
+            ex = new RuntimeException("Related topics of topic " + topicId + " can't be retrieved", e);
         } finally {
             tx.finish();
-            return topics;
+            if (ex == null) {
+                return topics;
+            } else {
+                throw ex;
+            }
         }
     }
 
@@ -187,16 +215,16 @@ public class EmbeddedService implements DeepaMehtaService {
         try {
             Topic topic = new Topic(-1, typeId, null, properties);
             //
-            triggerHook("preCreateHook", topic, clientContext);
+            triggerHook(Hook.PRE_CREATE, topic, clientContext);
             //
             newTopic = storage.createTopic(topic.typeId, topic.properties);
             //
-            triggerHook("postCreateHook", newTopic, clientContext);
+            triggerHook(Hook.POST_CREATE, newTopic, clientContext);
             //
             tx.success();
         } catch (Throwable e) {
             logger.warning("ROLLBACK!");
-            ex = new RuntimeException("Topic can't be created (type=" + typeId + ")", e);
+            ex = new RuntimeException("Topic of type \"" + typeId + "\" can't be created", e);
         } finally {
             tx.finish();
             if (ex == null) {
@@ -324,15 +352,24 @@ public class EmbeddedService implements DeepaMehtaService {
 
     @Override
     public void createTopicType(Map properties, List dataFields) {
+        RuntimeException ex = null;
         Transaction tx = storage.beginTx();
         try {
+            TopicType topicType = new TopicType(properties, dataFields);
+            //
+            triggerHook(Hook.PRE_CREATE, topicType, null);  // FIXME: clientContext=null
+            //
             storage.createTopicType(properties, dataFields);
+            //
             tx.success();
         } catch (Throwable e) {
-            e.printStackTrace();
             logger.warning("ROLLBACK!");
+            ex = new RuntimeException("Topic type \"" + properties.get("type_id") + "\" can't be created", e);
         } finally {
             tx.finish();
+            if (ex != null) {
+                throw ex;
+            }
         }
     }
 
@@ -414,20 +451,12 @@ public class EmbeddedService implements DeepaMehtaService {
 
     // --- Plugins ---
 
-    private void triggerHook(String hookName, Object... params) throws NoSuchMethodException,
-                                                                       IllegalAccessException,
-                                                                       InvocationTargetException {
-        Class[] paramClasses = new Class[params.length];
-        for (int i = 0; i < params.length; i++) {
-            if (params[i] == null) {
-                throw new NullPointerException("Parameter " + i + " of hook call \"" + hookName + "\" is null");
-            }
-            paramClasses[i] = params[i].getClass();
-        }
-        //
+    private void triggerHook(Hook hook, Object... params) throws NoSuchMethodException,
+                                                                 IllegalAccessException,
+                                                                 InvocationTargetException {
         for (DeepaMehtaPlugin plugin : plugins.values()) {
-            Method hook = plugin.getClass().getMethod(hookName, paramClasses);
-            hook.invoke(plugin, params);
+            Method hookMethod = plugin.getClass().getMethod(hook.name, hook.paramClasses);
+            hookMethod.invoke(plugin, params);
         }
     }
 
@@ -454,7 +483,7 @@ public class EmbeddedService implements DeepaMehtaService {
 
     //
 
-    private void runCoreMigrations() throws Exception {
+    private void runCoreMigrations() {
         int dbModelVersion = storage.getDbModelVersion();
         int requiredDbModelVersion = REQUIRED_DB_MODEL_VERSION;
         int migrationsToRun = requiredDbModelVersion - dbModelVersion;
@@ -465,14 +494,18 @@ public class EmbeddedService implements DeepaMehtaService {
         }
     }
 
-    private void runCoreMigration(int migrationNr) throws Exception {
-        String migrationClassName = "de.deepamehta.core.migrations.Migration" + migrationNr;
-        Migration migration = (Migration) Class.forName(migrationClassName).newInstance();
-        logger.info("Running core migration " + migration.getClass().getName());
-        migration.setDeepaMehtaService(this);
-        migration.run();
-        // update DB model version
-        logger.info("Core migration complete - Updating DB model version (" + migrationNr + ")");
-        storage.setDbModelVersion(migrationNr);
+    private void runCoreMigration(int migrationNr) {
+        try {
+            String migrationClassName = "de.deepamehta.core.migrations.Migration" + migrationNr;
+            Migration migration = (Migration) Class.forName(migrationClassName).newInstance();
+            logger.info("Running core migration " + migration.getClass().getName());
+            migration.setDeepaMehtaService(this);
+            migration.run();
+            // update DB model version
+            logger.info("Core migration complete - Updating DB model version (" + migrationNr + ")");
+            storage.setDbModelVersion(migrationNr);
+        } catch (Throwable e) {
+            throw new RuntimeException("Core migration can't run", e);
+        }
     }
 }
