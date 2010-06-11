@@ -183,7 +183,7 @@ public class EmbeddedService implements DeepaMehtaService {
     }
 
     @Override
-    public Topic searchTopics(String searchTerm, String fieldId, boolean wholeWord) {
+    public Topic searchTopics(String searchTerm, String fieldId, boolean wholeWord, Map clientContext) {
         Topic resultTopic = null;
         Transaction tx = storage.beginTx();
         try {
@@ -191,7 +191,7 @@ public class EmbeddedService implements DeepaMehtaService {
             // create result topic (a bucket)
             Map properties = new HashMap();
             properties.put("Search Term", searchTerm);
-            resultTopic = createTopic("Search Result", properties, null);
+            resultTopic = createTopic("Search Result", properties, clientContext);
             // associate result topics
             for (Topic topic : searchResult) {
                 createRelation("SEARCH_RESULT", resultTopic.id, topic.id, new HashMap());
