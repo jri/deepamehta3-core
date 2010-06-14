@@ -64,6 +64,10 @@ public class TopicType extends Topic {
 
     // ---
 
+    public List<DataField> getDataFields() {
+        return dataFields;
+    }
+
     public DataField getDataField(int index) {
         return dataFields.get(index);
     }

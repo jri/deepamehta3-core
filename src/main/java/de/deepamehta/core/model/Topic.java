@@ -3,6 +3,7 @@ package de.deepamehta.core.model;
 import org.codehaus.jettison.json.JSONObject;
 import org.codehaus.jettison.json.JSONException;
 
+import java.util.HashMap;
 import java.util.Map;
 
 
@@ -13,9 +14,9 @@ import java.util.Map;
 public class Topic {
 
     public long id;
-    public String typeId;                   // FIXME: might be uninitialized.
+    public String typeId;
     public String label;
-    public Map<String, String> properties;  // FIXME: might be uninitialized.
+    public Map<String, String> properties;
 
     public Topic(long id, String typeId, String label, Map properties) {
         this.id = id;
@@ -28,7 +29,7 @@ public class Topic {
 
     public String getProperty(String key) {
         if (properties == null) {
-            throw new RuntimeException("Properties of topic " + this + " are not initialized");
+            throw new RuntimeException("Properties of " + this + " are not initialized");
         }
         return properties.get(key);
     }
@@ -50,6 +51,6 @@ public class Topic {
 
     @Override
     public String toString() {
-        return id + " (typeId=\"" + typeId + "\", label=\"" + label + "\")";
+        return "topic " + id + " (typeId=\"" + typeId + "\", label=\"" + label + "\")";
     }
 }

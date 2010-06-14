@@ -127,8 +127,8 @@ class Neo4jTopicType extends TopicType {
         TraversalDescription desc = TraversalFactory.createTraversalDescription();
         desc = desc.relationships(Neo4jStorage.RelType.SEQUENCE_START, Direction.OUTGOING);
         desc = desc.relationships(Neo4jStorage.RelType.SEQUENCE,       Direction.OUTGOING);
-		// A custom filter is used to return only the nodes of this topic type's individual path.
-		// The path is recognized by the "topic_type_id" property of the constitutive relationships.
+        // A custom filter is used to return only the nodes of this topic type's individual path.
+        // The path is recognized by the "topic_type_id" property of the constitutive relationships.
         desc = desc.filter(new SequenceReturnFilter(typeId));
         // We need breadth first in order to get the nodes in proper sequence order.
         // (default is not breadth first, but probably depth first).

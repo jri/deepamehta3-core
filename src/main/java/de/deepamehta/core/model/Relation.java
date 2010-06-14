@@ -3,10 +3,14 @@ package de.deepamehta.core.model;
 import org.codehaus.jettison.json.JSONObject;
 import org.codehaus.jettison.json.JSONException;
 
+import java.util.HashMap;
 import java.util.Map;
 
 
 
+/**
+ * A topic data transfer object.
+ */
 public class Relation {
 
     public long id;
@@ -20,8 +24,10 @@ public class Relation {
         this.typeId = typeId;
         this.srcTopicId = srcTopicId;
         this.dstTopicId = dstTopicId;
-        this.properties = properties;
+        this.properties = properties != null ? properties : new HashMap();
     }
+
+    // ---
 
     public JSONObject toJSON() throws JSONException {
         JSONObject o = new JSONObject();

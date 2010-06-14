@@ -62,7 +62,7 @@ public class EmbeddedService implements DeepaMehtaService {
         RuntimeException ex = null;
         Transaction tx = storage.beginTx();
         try {
-            setupDB();
+            initDB();
             runCoreMigrations();
             tx.success();   
         } catch (Throwable e) {
@@ -209,17 +209,17 @@ public class EmbeddedService implements DeepaMehtaService {
 
     @Override
     public Topic createTopic(String typeId, Map properties, Map clientContext) {
-        Topic newTopic = null;
+        Topic topic = null;
         RuntimeException ex = null;
         Transaction tx = storage.beginTx();
         try {
-            Topic topic = new Topic(-1, typeId, null, properties);
+            Topic t = new Topic(-1, typeId, null, initProperties(properties, typeId));
             //
-            triggerHook(Hook.PRE_CREATE, topic, clientContext);
+            triggerHook(Hook.PRE_CREATE, t, clientContext);
             //
-            newTopic = storage.createTopic(topic.typeId, topic.properties);
+            topic = storage.createTopic(t.typeId, t.properties);
             //
-            triggerHook(Hook.POST_CREATE, newTopic, clientContext);
+            triggerHook(Hook.POST_CREATE, topic, clientContext);
             //
             tx.success();
         } catch (Throwable e) {
@@ -228,7 +228,7 @@ public class EmbeddedService implements DeepaMehtaService {
         } finally {
             tx.finish();
             if (ex == null) {
-                return newTopic;
+                return topic;
             } else {
                 throw ex;
             }
@@ -273,32 +273,46 @@ public class EmbeddedService implements DeepaMehtaService {
     @Override
     public Relation getRelation(long srcTopicId, long dstTopicId) {
         Relation relation = null;
+        RuntimeException ex = null;
         Transaction tx = storage.beginTx();
         try {
             relation = storage.getRelation(srcTopicId, dstTopicId);
             tx.success();
         } catch (Throwable e) {
-            e.printStackTrace();
             logger.warning("ROLLBACK!");
+            ex = new RuntimeException("Relation between topics " + srcTopicId +
+                " and " + dstTopicId + " can't be retrieved", e);
         } finally {
             tx.finish();
-            return relation;
+            if (ex == null) {
+                return relation;
+            } else {
+                throw ex;
+            }
         }
     }
 
     @Override
     public Relation createRelation(String typeId, long srcTopicId, long dstTopicId, Map properties) {
         Relation relation = null;
+        RuntimeException ex = null;
         Transaction tx = storage.beginTx();
         try {
-            relation = storage.createRelation(typeId, srcTopicId, dstTopicId, properties);
+            Relation rel = new Relation(-1, typeId, srcTopicId, dstTopicId, properties);
+            //
+            relation = storage.createRelation(rel.typeId, rel.srcTopicId, rel.dstTopicId, rel.properties);
+            //
             tx.success();
         } catch (Throwable e) {
-            e.printStackTrace();
             logger.warning("ROLLBACK!");
+            ex = new RuntimeException("Relation of type \"" + typeId + "\" can't be created", e);
         } finally {
             tx.finish();
-            return relation;
+            if (ex == null) {
+                return relation;
+            } else {
+                throw ex;
+            }
         }
     }
 
@@ -449,6 +463,20 @@ public class EmbeddedService implements DeepaMehtaService {
 
 
 
+    // --- Topics ---
+
+    private Map initProperties(Map properties, String topicTypeId) {
+        if (properties == null) {
+            properties = new HashMap();
+        }
+        for (DataField dataField : getTopicType(topicTypeId).getDataFields()) {
+            if (!dataField.dataType.equals("relation") && properties.get(dataField.id) == null) {
+                properties.put(dataField.id, "");
+            }
+        }
+        return properties;
+    }
+
     // --- Plugins ---
 
     private void triggerHook(Hook hook, Object... params) throws NoSuchMethodException,
@@ -473,7 +501,7 @@ public class EmbeddedService implements DeepaMehtaService {
         storage = new Neo4jStorage("/Users/jri/var/db/deepamehta-db-neo4j");
     }
 
-    private void setupDB() {
+    private void initDB() {
         storage.setup();
     }
 
