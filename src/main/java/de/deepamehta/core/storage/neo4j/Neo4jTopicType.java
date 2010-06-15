@@ -103,7 +103,7 @@ class Neo4jTopicType extends TopicType {
         //
         List dataFields = new ArrayList();
         for (Node fieldNode : getNodeSequence(typeNode)) {
-            logger.info("  # Result " + fieldNode);
+            logger.fine("  # Result " + fieldNode);
             // error check
             if (!propNodes.contains(fieldNode)) {
                 throw new RuntimeException("Graph inconsistency for topic type \"" + typeId + "\": " +
@@ -149,14 +149,14 @@ class Neo4jTopicType extends TopicType {
         private String typeId;
 
         private SequenceReturnFilter(String typeId) {
-            logger.info("########## Traversing data field sequence for topic type \"" + typeId + "\"");
+            logger.fine("########## Traversing data field sequence for topic type \"" + typeId + "\"");
             this.typeId = typeId;
         }
 
         public boolean shouldReturn(Position position) {
             boolean doReturn = !position.atStartNode() &&
                                 position.lastRelationship().getProperty("topic_type_id").equals(typeId);
-            logger.info("### " + position.node() + " " + position.lastRelationship() + " => return=" + doReturn);
+            logger.fine("### " + position.node() + " " + position.lastRelationship() + " => return=" + doReturn);
             return doReturn;
         }
     }

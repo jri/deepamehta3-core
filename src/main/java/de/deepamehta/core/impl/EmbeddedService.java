@@ -193,7 +193,9 @@ public class EmbeddedService implements DeepaMehtaService {
             properties.put("Search Term", searchTerm);
             resultTopic = createTopic("Search Result", properties, clientContext);
             // associate result topics
+            logger.fine("Relating " + searchResult.size() + " result topics");
             for (Topic topic : searchResult) {
+                logger.fine("Relating " + topic);
                 createRelation("SEARCH_RESULT", resultTopic.id, topic.id, new HashMap());
             }
             //
@@ -265,11 +267,6 @@ public class EmbeddedService implements DeepaMehtaService {
 
     // --- Relations ---
 
-    /**
-     * Returns the relation between the two topics (regardless of type and direction).
-     * If no such relation exists null is returned.
-     * If more than one relation exists, only the first one is returned.
-     */
     @Override
     public Relation getRelation(long srcTopicId, long dstTopicId) {
         Relation relation = null;

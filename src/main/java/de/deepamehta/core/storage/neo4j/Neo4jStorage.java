@@ -12,6 +12,8 @@ import org.neo4j.graphdb.Node;
 import org.neo4j.graphdb.PropertyContainer;
 import org.neo4j.graphdb.Relationship;
 import org.neo4j.graphdb.RelationshipType;
+import org.neo4j.graphdb.traversal.Position;
+import org.neo4j.graphdb.traversal.PruneEvaluator;
 import org.neo4j.graphdb.traversal.ReturnFilter;
 import org.neo4j.graphdb.traversal.TraversalDescription;
 import org.neo4j.graphdb.traversal.Traverser;
@@ -44,9 +46,9 @@ public class Neo4jStorage implements Storage {
     private final Logger logger = Logger.getLogger(getClass().getName());
 
     private GraphDatabaseService graphDb;
+    private MetaModelNamespace namespace;
     private IndexService index;
     private LuceneFulltextQueryIndexService fulltextIndex;
-    private MetaModelNamespace namespace;
     //
     private final TypeCache typeCache;
 
@@ -105,19 +107,13 @@ public class Neo4jStorage implements Storage {
 
     @Override
     public List<Topic> getRelatedTopics(long topicId, List<String> includeTopicTypes, List<String> excludeRelTypes) {
-        logger.info("Getting related topics of topic " + topicId);
         List topics = new ArrayList();
-        Node node = graphDb.getNodeById(topicId);
-        for (Relationship rel : node.getRelationships()) {
-            // apply relation type filter
-            if (!excludeRelTypes.contains(rel.getType().name())) {
-                Node relNode = rel.getOtherNode(node);
-                // apply topic type filter
-                if (includeTopicTypes.isEmpty() || includeTopicTypes.contains(getTypeId(relNode))) {
-                    topics.add(buildTopic(relNode));
-                }
-            }
+        TraversalDescription desc = createRelatedTopicsTraversalDescription(includeTopicTypes, excludeRelTypes);
+        Node startNode = graphDb.getNodeById(topicId);
+        for (Node node : desc.traverse(startNode).nodes()) {
+            topics.add(buildTopic(node));
         }
+        logger.info("=> " + topics.size() + " topics");
         return topics;
     }
 
@@ -126,12 +122,19 @@ public class Neo4jStorage implements Storage {
         if (fieldId == null) fieldId = "default";
         if (!wholeWord) searchTerm += "*";
         IndexHits<Node> hits = fulltextIndex.getNodes(fieldId, searchTerm);
-        logger.info("Searching \"" + searchTerm + "\" => " + hits.size() + " topics found");
+        logger.info("Searching \"" + searchTerm + "\" in field \"" + fieldId + "\" => " + hits.size() + " topics");
         List result = new ArrayList();
         for (Node node : hits) {
-            // FIXME: type, label, and properties remain uninitialized
-            result.add(new Topic(node.getId(), null, null, null));
+            logger.fine("Adding topic " + node.getId());
+            // Filter result set. Note: a search should not find other searches.
+            // TODO: drop this filter. Items not intended for being find should not be indexed at all. Model change
+            // required: the indexing mode must be specified per topic type/data field pair instead per data field.
+            if (!getTypeId(node).equals("Search Result")) {
+                // FIXME: type, label, and properties remain uninitialized
+                result.add(new Topic(node.getId(), null, null, null));
+            }
         }
+        logger.info("After filtering => " + result.size() + " topics");
         return result;
     }
 
@@ -404,5 +407,72 @@ public class Neo4jStorage implements Storage {
 
     MetaModelProperty createMetaProperty(String dataFieldId) {
         return namespace.getMetaProperty(dataFieldId, true);
+    }
+
+    // ---
+
+    private TraversalDescription createRelatedTopicsTraversalDescription(List<String> includeTopicTypes,
+                                                                         List<String> excludeRelTypes) {
+        TraversalDescription desc = TraversalFactory.createTraversalDescription();
+        desc = desc.filter(new RelatedTopicsFilter(includeTopicTypes, excludeRelTypes));
+        desc = desc.prune(new DepthOnePruneEvaluator());
+        return desc;
+    }
+
+    private class RelatedTopicsFilter implements ReturnFilter {
+
+        private List<String> includeTopicTypes;
+        private Map<String, Direction> excludeRelTypes = new HashMap();
+
+        private RelatedTopicsFilter(List<String> includeTopicTypes, List<String> excludeRelTypes) {
+            //
+            this.includeTopicTypes = includeTopicTypes;
+            this.excludeRelTypes = new HashMap();
+            //
+            for (String relFilter : excludeRelTypes) {
+                String[] relFilterTokens = relFilter.split(";");
+                String relTypeName = relFilterTokens[0];
+                Direction direction;
+                if (relFilterTokens.length == 1) {
+                    direction = Direction.BOTH;
+                } else {
+                    direction = Direction.valueOf(relFilterTokens[1]);
+                }
+                this.excludeRelTypes.put(relTypeName, direction);
+            }
+        }
+
+        @Override
+        public boolean shouldReturn(Position position) {
+            if (position.atStartNode()) {
+                return false;
+            }
+            // apply topic type filter
+            if (!includeTopicTypes.isEmpty() && !includeTopicTypes.contains(getTypeId(position.node()))) {
+                return false;
+            }
+            // apply relation type filter
+            Relationship rel = position.lastRelationship();
+            Direction direction = excludeRelTypes.get(rel.getType().name());
+            if (direction != null) {
+                if (direction == Direction.BOTH) {
+                    return false;
+                } if (direction == Direction.OUTGOING && position.node().equals(rel.getStartNode())) {
+                    return false;
+                } else if (direction == Direction.INCOMING && position.node().equals(rel.getEndNode())) {
+                    return false;
+                }
+            }
+            //
+            return true;
+        }
+    }
+
+    private class DepthOnePruneEvaluator implements PruneEvaluator {
+
+        @Override
+        public boolean pruneAfter(Position position) {
+            return position.depth() == 1;
+        }
     }
 }
