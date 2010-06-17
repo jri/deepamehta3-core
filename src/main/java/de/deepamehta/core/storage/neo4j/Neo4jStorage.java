@@ -31,6 +31,7 @@ import org.neo4j.meta.model.MetaModelProperty;
 import org.neo4j.meta.model.MetaModelRelTypes;
 
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
@@ -211,7 +212,7 @@ public class Neo4jStorage implements Storage {
     @Override
     public Set<String> getTopicTypeIds() {
         Set typeIds = new HashSet();
-        for (MetaModelClass metaClass : namespace.getMetaClasses()) {
+        for (MetaModelClass metaClass : getAllMetaClasses()) {
             typeIds.add(metaClass.getName());
         }
         return typeIds;
@@ -397,8 +398,18 @@ public class Neo4jStorage implements Storage {
         return type;
     }
 
+    // ---
+
     MetaModelClass getMetaClass(String typeId) {
-        return namespace.getMetaClass(typeId, false);
+        MetaModelClass metaClass = namespace.getMetaClass(typeId, false);
+        if (metaClass == null) {
+            throw new RuntimeException("Topic type \"" + typeId + "\" is unknown");
+        }
+        return metaClass;
+    }
+
+    Collection<MetaModelClass> getAllMetaClasses() {
+        return namespace.getMetaClasses();
     }
 
     MetaModelClass createMetaClass(String typeId) {

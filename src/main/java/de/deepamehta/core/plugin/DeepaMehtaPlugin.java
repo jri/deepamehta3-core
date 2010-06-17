@@ -4,6 +4,8 @@ import de.deepamehta.core.model.Topic;
 import de.deepamehta.core.service.DeepaMehtaService;
 import de.deepamehta.core.service.Migration;
 
+import com.sun.jersey.spi.container.servlet.ServletContainer;
+
 import org.osgi.framework.Bundle;
 import org.osgi.framework.BundleActivator;
 import org.osgi.framework.BundleContext;
@@ -15,24 +17,35 @@ import org.osgi.service.http.NamespaceException;
 import org.osgi.util.tracker.ServiceTracker;
 
 import java.util.ArrayList;
+import java.util.Dictionary;
 import java.util.HashMap;
+import java.util.Hashtable;
 import java.util.Map;
+import java.util.Properties;
 import java.util.logging.Logger;
 
+import java.io.InputStream;
+import java.io.IOException;
 
 
+
+/**
+ * Base class for plugin developers to derive their plugins from.
+ */
 public class DeepaMehtaPlugin implements BundleActivator {
 
-    private String pluginId;
-    private String pluginName;
-    private String pluginClass;
-    private Bundle pluginBundle;
-    private Topic  pluginTopic;
+    private String     pluginId;
+    private String     pluginName;
+    private String     pluginClass;
+    private String     pluginPackage;
+    private Bundle     pluginBundle;
+    private Topic      pluginTopic;         // Represents this plugin in DB. Holds plugin DB version number.
+    private Properties pluginProperties;    // Read from plugin.properties
 
     private boolean isActivated;
 
     private ServiceTracker deepamehtaServiceTracker;
-    protected DeepaMehtaService dms;
+    protected static DeepaMehtaService dms;
 
     private ServiceTracker httpServiceTracker;
     private HttpService httpService;
@@ -41,9 +54,9 @@ public class DeepaMehtaPlugin implements BundleActivator {
 
 
 
-    // ****************
-    // *** Accessor ***
-    // ****************
+    // ************************
+    // *** Public Accessors ***
+    // ************************
 
 
 
@@ -51,15 +64,19 @@ public class DeepaMehtaPlugin implements BundleActivator {
         return pluginTopic;
     }
 
+    public String getProperty(String key) {
+        return getProperty(key, null);
+    }
+
     public Migration getMigration(int migrationNr) throws ClassNotFoundException,
                                                           InstantiationException,
                                                           IllegalAccessException {
-        String migrationClassName = getClass().getPackage().getName() + ".migrations.Migration" + migrationNr;
+        String migrationClassName = pluginPackage + ".migrations.Migration" + migrationNr;
         return (Migration) pluginBundle.loadClass(migrationClassName).newInstance();
     }
 
-    // ### FIXME: drop method and make dms protected instead?
-    protected DeepaMehtaService getService() {
+    // FIXME: drop method and make dms protected instead?
+    public static DeepaMehtaService getService() {
         // DeepaMehtaService dms = (DeepaMehtaService) deepamehtaServiceTracker.getService();
         if (dms == null) {
             throw new RuntimeException("DeepaMehta core service is currently not available");
@@ -76,18 +93,27 @@ public class DeepaMehtaPlugin implements BundleActivator {
 
 
     public void start(BundleContext context) {
-        pluginBundle = context.getBundle();
-        pluginId = pluginBundle.getSymbolicName();
-        pluginName = (String) pluginBundle.getHeaders().get("Bundle-Name");
-        pluginClass = (String) pluginBundle.getHeaders().get("Bundle-Activator");
-        //
-        logger.info("---------- Starting DeepaMehta plugin bundle \"" + pluginName + "\" ----------");
-        //
-        deepamehtaServiceTracker = createDeepamehtaServiceTracker(context);
-        deepamehtaServiceTracker.open();
-        //
-        httpServiceTracker = createHttpServiceTracker(context);
-        httpServiceTracker.open();
+        try {
+            pluginBundle = context.getBundle();
+            pluginId = pluginBundle.getSymbolicName();
+            pluginName = (String) pluginBundle.getHeaders().get("Bundle-Name");
+            pluginClass = (String) pluginBundle.getHeaders().get("Bundle-Activator");
+            pluginPackage = getClass().getPackage().getName();
+            //
+            logger.info("---------- Starting DeepaMehta plugin bundle \"" + pluginName + "\" ----------");
+            //
+            pluginProperties = readProperties();
+            //
+            deepamehtaServiceTracker = createDeepamehtaServiceTracker(context);
+            deepamehtaServiceTracker.open();
+            //
+            httpServiceTracker = createHttpServiceTracker(context);
+            httpServiceTracker.open();
+        } catch (RuntimeException e) {
+            logger.severe("Plugin \"" + pluginName + "\" can't be activated. Reason:");
+            e.printStackTrace();
+            throw e;
+        }
     }
 
     public void stop(BundleContext context) {
@@ -104,16 +130,6 @@ public class DeepaMehtaPlugin implements BundleActivator {
     // *************
 
 
-
-    public int requiredDBModelVersion() {
-        return 0;
-    }
-
-    public String getClientPlugin() {
-        return null;
-    }
-
-    // ---
 
     public void preCreateHook(Topic topic, Map<String, String> clientContext) {
     }
@@ -170,7 +186,8 @@ public class DeepaMehtaPlugin implements BundleActivator {
             public Object addingService(ServiceReference serviceRef) {
                 logger.info("Adding HTTP service to plugin \"" + pluginName + "\"");
                 httpService = (HttpService) super.addingService(serviceRef);
-                registerResources();
+                registerWebResources();
+                registerRestResources();
                 return httpService;
             }
 
@@ -178,7 +195,8 @@ public class DeepaMehtaPlugin implements BundleActivator {
             public void removedService(ServiceReference ref, Object service) {
                 if (service == httpService) {
                     logger.info("Removing HTTP service from plugin \"" + pluginName + "\"");
-                    unregisterResources();
+                    unregisterWebResources();
+                    unregisterRestResources();
                     httpService = null;
                 }
                 super.removedService(ref, service);
@@ -189,35 +207,84 @@ public class DeepaMehtaPlugin implements BundleActivator {
     // ---
 
     private void registerPlugin() {
-        logger.info("Registering plugin \"" + pluginName + "\" (" + pluginClass + ")");
+        logger.info("Registering plugin \"" + pluginName + "\" at DeepaMehta core service");
         dms.registerPlugin(pluginId, this);
         isActivated = true;
     }
 
     private void unregisterPlugin() {
         if (isActivated) {
-            logger.info("Unregistering plugin \"" + pluginName + "\" (" + pluginClass + ")");
+            logger.info("Unregistering plugin \"" + pluginName + "\" at DeepaMehta core service");
             dms.unregisterPlugin(pluginId);
         }
     }
 
     // ---
 
-    private void registerResources() {
-        logger.info("Registering web resources of plugin \"" + pluginName + "\"");
+    private void registerWebResources() {
         try {
-            // Note: to map the bundle root, according to OSGi API the resource name "/" is to be used.
-            // This doesn't work: java.lang.IllegalArgumentException: Malformed resource name [/]
-            // Using "" instead works. IMO this is an error in the "Apache Felix Http Jetty" bundle.
-            httpService.registerResources("/" + pluginId, "", null);
+            logger.info("Registering web resources of plugin \"" + pluginName + "\"");
+            httpService.registerResources("/" + pluginId, "/web", null);
         } catch (NamespaceException e) {
-            throw new RuntimeException(e);
+            throw new RuntimeException("Web resources of plugin \"" + pluginName + "\" can't be registered", e);
         }
     }
 
-    private void unregisterResources() {
+    private void unregisterWebResources() {
         logger.info("Unregistering web resources of plugin \"" + pluginName + "\"");
         httpService.unregister("/" + pluginId);
+    }
+
+    // ---
+
+    private void registerRestResources() {
+        try {
+            String namespace = getProperty("restResourcesNamespace");
+            if (namespace != null) {
+                logger.info("Registering REST resources of plugin \"" + pluginName + "\" at namespace \"" +
+                    namespace + "\"");
+                //
+                Dictionary initParams = new Hashtable();
+                initParams.put("com.sun.jersey.config.property.packages", pluginPackage + ".resources");
+            	//
+                httpService.registerServlet(namespace, new ServletContainer(), initParams, null);
+            } else {
+                logger.info("No need to register REST resources for plugin \"" + pluginName +
+                    "\" (plugin provides no one)");
+            }
+        } catch (Exception e) {
+            throw new RuntimeException("REST resources of plugin \"" + pluginName + "\" can't be registered", e);
+        }
+    }
+
+    private void unregisterRestResources() {
+        String namespace = getProperty("restResourcesNamespace");
+        if (namespace != null) {
+            logger.info("Unregistering REST resources of plugin \"" + pluginName + "\"");
+            httpService.unregister(namespace);
+        }
+    }
+
+    // ---
+
+    private Properties readProperties() {
+        try {
+            Properties properties = new Properties();
+            InputStream in = getClass().getResourceAsStream("/plugin.properties");
+            if (in != null) {
+                logger.info("Reading plugin properties from file /plugin.properties");
+                properties.load(in);
+            } else {
+                logger.info("No plugin properties file available - Using default plugin properties");
+            }
+            return properties;
+        } catch (IOException e) {
+            throw new RuntimeException("Plugin properties file can't be read", e);
+        }
+    }
+
+    private String getProperty(String key, String defaultValue) {
+        return pluginProperties.getProperty(key, defaultValue);
     }
 
     // ---
@@ -247,19 +314,19 @@ public class DeepaMehtaPlugin implements BundleActivator {
             initPluginTopic();
             runPluginMigrations();
             registerPlugin();
-        } catch (Throwable e) {
-            e.printStackTrace();
-            logger.warning("Plugin \"" + pluginName + "\" is not activated");
+        } catch (RuntimeException e) {
+            logger.severe("Plugin \"" + pluginName + "\" can't be activated. Reason:");
+            throw e;
         }
     }
 
     private void runPluginMigrations() {
         int dbModelVersion = Integer.parseInt(pluginTopic.getProperty("db_model_version"));
-        int requiredDbModelVersion = requiredDBModelVersion();
-        int migrationsToRun = requiredDbModelVersion - dbModelVersion;
-        logger.info("dbModelVersion=" + dbModelVersion + ", requiredDbModelVersion=" + requiredDbModelVersion +
+        int requiredPluginDbVersion = Integer.parseInt(getProperty("requiredPluginDBVersion", "0"));
+        int migrationsToRun = requiredPluginDbVersion - dbModelVersion;
+        logger.info("dbModelVersion=" + dbModelVersion + ", requiredPluginDbVersion=" + requiredPluginDbVersion +
             " => Running " + migrationsToRun + " plugin migrations");
-        for (int i = dbModelVersion + 1; i <= requiredDbModelVersion; i++) {
+        for (int i = dbModelVersion + 1; i <= requiredPluginDbVersion; i++) {
             dms.runPluginMigration(this, i);
         }
     }

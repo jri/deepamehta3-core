@@ -30,7 +30,7 @@ public interface DeepaMehtaService {
     /**
      * @param   excludeRelTypes     The relation type filter (optional).
      *                              A list of strings of the form "<relTypeName>[;<direction>]",
-     *                              e.g. "SEARCH_RESULT;INCOMING".
+     *                              e.g. "SEARCH_RESULT;OUTGOING".
      *                              An empty list switches the relation type filter off.
      */
     public List<Topic> getRelatedTopics(long topicId, List<String> includeTopicTypes, List<String> excludeRelTypes);

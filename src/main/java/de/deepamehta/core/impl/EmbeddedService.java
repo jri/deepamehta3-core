@@ -90,54 +90,70 @@ public class EmbeddedService implements DeepaMehtaService {
     @Override
     public Topic getTopic(long id) {
         Topic topic = null;
+        RuntimeException ex = null;
         Transaction tx = storage.beginTx();
         try {
             topic = storage.getTopic(id);
             tx.success();   
         } catch (Throwable e) {
-            e.printStackTrace();
             logger.warning("ROLLBACK!");
+            ex = new RuntimeException("Topic " + id + " can't be retrieved", e);
         } finally {
             tx.finish();
-            return topic;
+            if (ex == null) {
+                return topic;
+            } else {
+                throw ex;
+            }
         }
     }
 
     @Override
     public Topic getTopic(String key, Object value) {
         Topic topic = null;
+        RuntimeException ex = null;
         Transaction tx = storage.beginTx();
         try {
             topic = storage.getTopic(key, value);
             tx.success();   
         } catch (Throwable e) {
-            e.printStackTrace();
             logger.warning("ROLLBACK!");
+            ex = new RuntimeException("Topic can't be retrieved (tried by property \"" + key + "\"=" + value + ")", e);
         } finally {
             tx.finish();
-            return topic;
+            if (ex == null) {
+                return topic;
+            } else {
+                throw ex;
+            }
         }
     }
 
     @Override
     public String getTopicProperty(long topicId, String key) {
         String value = null;
+        RuntimeException ex = null;
         Transaction tx = storage.beginTx();
         try {
             value = storage.getTopicProperty(topicId, key);
             tx.success();   
         } catch (Throwable e) {
-            e.printStackTrace();
             logger.warning("ROLLBACK!");
+            ex = new RuntimeException("Property \"" + key + "\" of topic " + topicId + " can't be retrieved", e);
         } finally {
             tx.finish();
-            return value;
+            if (ex == null) {
+                return value;
+            } else {
+                throw ex;
+            }
         }
     }
 
     @Override
     public List<Topic> getTopics(String typeId) {
         List<Topic> topics = null;
+        RuntimeException ex = null;
         Transaction tx = storage.beginTx();
         try {
             topics = storage.getTopics(typeId);
@@ -148,11 +164,15 @@ public class EmbeddedService implements DeepaMehtaService {
             //
             tx.success();
         } catch (Throwable e) {
-            e.printStackTrace();
             logger.warning("ROLLBACK!");
+            ex = new RuntimeException("Topics of type \"" + typeId + "\" can't be retrieved", e);
         } finally {
             tx.finish();
-            return topics;
+            if (ex == null) {
+                return topics;
+            } else {
+                throw ex;
+            }
         }
     }
 

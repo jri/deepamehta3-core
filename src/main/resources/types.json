@@ -3,7 +3,7 @@
         type_id: "Note",
         fields: [
             {id: "Title", model: {type: "text"}, view: {editor: "single line"}, indexing_mode: "FULLTEXT"},
-            {id: "Body",  model: {type: "html"}, view: {editor: "multi line"},  indexing_mode: "FULLTEXT"}
+            {id: "Text",  model: {type: "html"}, view: {editor: "multi line"},  indexing_mode: "FULLTEXT"}
         ],
         view: {
             icon_src: "images/pencil.png"

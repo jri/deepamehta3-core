@@ -35,7 +35,7 @@ public class Activator implements BundleActivator {
             logger.info("Registering DeepaMehta core service");
             context.registerService(DeepaMehtaService.class.getName(), service, null);
         } catch (RuntimeException e) {
-            logger.severe("DeepaMehta core service is not available. Reason:");
+            logger.severe("DeepaMehta core service can't be activated. Reason:");
             throw e;
         }
     }
