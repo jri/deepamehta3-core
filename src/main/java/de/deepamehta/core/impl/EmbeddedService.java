@@ -3,6 +3,7 @@ package de.deepamehta.core.impl;
 import de.deepamehta.core.model.DataField;
 import de.deepamehta.core.model.Topic;
 import de.deepamehta.core.model.TopicType;
+import de.deepamehta.core.model.RelatedTopic;
 import de.deepamehta.core.model.Relation;
 import de.deepamehta.core.plugin.DeepaMehtaPlugin;
 import de.deepamehta.core.service.DeepaMehtaService;
@@ -177,15 +178,27 @@ public class EmbeddedService implements DeepaMehtaService {
     }
 
     @Override
-    public List<Topic> getRelatedTopics(long topicId, List<String> includeTopicTypes, List<String> excludeRelTypes) {
-        List<Topic> topics = null;
+    public List<RelatedTopic> getRelatedTopics(long topicId, List<String> includeTopicTypes,
+                                                             List<String> includeRelTypes,
+                                                             List<String> excludeRelTypes) {
+        // set defaults
+        if (includeTopicTypes == null) includeTopicTypes = new ArrayList();
+        if (includeRelTypes == null) includeRelTypes = new ArrayList();
+        if (excludeRelTypes == null) excludeRelTypes = new ArrayList();
+        // error check
+        if (!includeRelTypes.isEmpty() && !excludeRelTypes.isEmpty()) {
+            throw new IllegalArgumentException("using includeRelTypes and excludeRelTypes at the same time " +
+                "is not possible");
+        }
+        //
+        List<RelatedTopic> relTopics = null;
         RuntimeException ex = null;
         Transaction tx = storage.beginTx();
         try {
-            topics = storage.getRelatedTopics(topicId, includeTopicTypes, excludeRelTypes);
+            relTopics = storage.getRelatedTopics(topicId, includeTopicTypes, includeRelTypes, excludeRelTypes);
             //
-            for (Topic topic : topics) {
-                triggerHook(Hook.PROVIDE_DATA, topic);
+            for (RelatedTopic relTopic : relTopics) {
+                triggerHook(Hook.PROVIDE_DATA, relTopic.getTopic());
             }
             //
             tx.success();
@@ -195,7 +208,7 @@ public class EmbeddedService implements DeepaMehtaService {
         } finally {
             tx.finish();
             if (ex == null) {
-                return topics;
+                return relTopics;
             } else {
                 throw ex;
             }

@@ -1,6 +1,7 @@
 package de.deepamehta.core.storage;
 
 import de.deepamehta.core.model.DataField;
+import de.deepamehta.core.model.RelatedTopic;
 import de.deepamehta.core.model.Relation;
 import de.deepamehta.core.model.Topic;
 import de.deepamehta.core.model.TopicType;
@@ -23,7 +24,9 @@ public interface Storage {
 
     public List<Topic> getTopics(String typeId);
 
-    public List<Topic> getRelatedTopics(long topicId, List<String> includeTopicTypes, List<String> excludeRelTypes);
+    public List<RelatedTopic> getRelatedTopics(long topicId, List<String> includeTopicTypes,
+                                                             List<String> includeRelTypes,
+                                                             List<String> excludeRelTypes);
 
     public List<Topic> searchTopics(String searchTerm, String fieldId, boolean wholeWord);
 

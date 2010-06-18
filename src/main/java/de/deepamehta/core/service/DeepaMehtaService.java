@@ -3,6 +3,7 @@ package de.deepamehta.core.service;
 import de.deepamehta.core.model.DataField;
 import de.deepamehta.core.model.Topic;
 import de.deepamehta.core.model.TopicType;
+import de.deepamehta.core.model.RelatedTopic;
 import de.deepamehta.core.model.Relation;
 import de.deepamehta.core.plugin.DeepaMehtaPlugin;
 
@@ -28,12 +29,18 @@ public interface DeepaMehtaService {
     public List<Topic> getTopics(String typeId);
 
     /**
-     * @param   excludeRelTypes     The relation type filter (optional).
+     * @param   includeRelTypes     The include relation type filter (optional).
+     *                              A list of strings of the form "<relTypeName>[;<direction>]",
+     *                              e.g. "TOPICMAP_TOPIC;INCOMING".
+     *                              Null or an empty list switches the filter off.
+     * @param   excludeRelTypes     The exclude relation type filter (optional).
      *                              A list of strings of the form "<relTypeName>[;<direction>]",
      *                              e.g. "SEARCH_RESULT;OUTGOING".
-     *                              An empty list switches the relation type filter off.
+     *                              Null or an empty list switches the filter off.
      */
-    public List<Topic> getRelatedTopics(long topicId, List<String> includeTopicTypes, List<String> excludeRelTypes);
+    public List<RelatedTopic> getRelatedTopics(long topicId, List<String> includeTopicTypes,
+                                                             List<String> includeRelTypes,
+                                                             List<String> excludeRelTypes);
 
     /**
      * Performs a fulltext search.

@@ -27,6 +27,10 @@ public class Relation {
         this.properties = properties != null ? properties : new HashMap();
     }
 
+    public Relation(Relation relation) {
+        this(relation.id, relation.typeId, relation.srcTopicId, relation.dstTopicId, relation.properties);
+    }
+
     // ---
 
     public JSONObject toJSON() throws JSONException {

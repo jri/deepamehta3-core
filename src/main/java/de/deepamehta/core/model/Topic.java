@@ -22,15 +22,16 @@ public class Topic {
         this.id = id;
         this.typeId = typeId;
         this.label = label;
-        this.properties = properties;
+        this.properties = properties != null ? properties : new HashMap();
+    }
+
+    public Topic(Topic topic) {
+        this(topic.id, topic.typeId, topic.label, topic.properties);
     }
 
     // ---
 
     public String getProperty(String key) {
-        if (properties == null) {
-            throw new RuntimeException("Properties of " + this + " are not initialized");
-        }
         return properties.get(key);
     }
 

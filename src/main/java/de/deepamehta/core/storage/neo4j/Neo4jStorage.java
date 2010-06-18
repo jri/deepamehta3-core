@@ -3,6 +3,7 @@ package de.deepamehta.core.storage.neo4j;
 import de.deepamehta.core.model.DataField;
 import de.deepamehta.core.model.Topic;
 import de.deepamehta.core.model.TopicType;
+import de.deepamehta.core.model.RelatedTopic;
 import de.deepamehta.core.model.Relation;
 import de.deepamehta.core.storage.Storage;
 
@@ -107,15 +108,22 @@ public class Neo4jStorage implements Storage {
     }
 
     @Override
-    public List<Topic> getRelatedTopics(long topicId, List<String> includeTopicTypes, List<String> excludeRelTypes) {
-        List topics = new ArrayList();
-        TraversalDescription desc = createRelatedTopicsTraversalDescription(includeTopicTypes, excludeRelTypes);
+    public List<RelatedTopic> getRelatedTopics(long topicId, List<String> includeTopicTypes,
+                                                             List<String> includeRelTypes,
+                                                             List<String> excludeRelTypes) {
+        List relTopics = new ArrayList();
+        TraversalDescription desc = createRelatedTopicsTraversalDescription(includeTopicTypes,
+                                                                            includeRelTypes,
+                                                                            excludeRelTypes);
         Node startNode = graphDb.getNodeById(topicId);
-        for (Node node : desc.traverse(startNode).nodes()) {
-            topics.add(buildTopic(node));
+        for (Position pos : desc.traverse(startNode)) {
+            RelatedTopic relTopic = new RelatedTopic();
+            relTopic.setTopic(buildTopic(pos.node()));
+            relTopic.setRelation(buildRelation(pos.lastRelationship()));
+            relTopics.add(relTopic);
         }
-        logger.info("=> " + topics.size() + " topics");
-        return topics;
+        logger.info("=> " + relTopics.size() + " related topics");
+        return relTopics;
     }
 
     @Override
@@ -184,7 +192,8 @@ public class Neo4jStorage implements Storage {
         }
         if (relationship != null) {
             logger.info("=> relationship found (ID=" + relationship.getId() + ")");
-            return new Relation(relationship.getId(), null, srcTopicId, dstTopicId, null);  // FIXME: typeId and properties remain uninitialized
+            // FIXME: typeId and properties remain uninitialized
+            return new Relation(relationship.getId(), null, srcTopicId, dstTopicId, null);
         } else {
             logger.info("=> no such relationship");
             return null;
@@ -293,6 +302,7 @@ public class Neo4jStorage implements Storage {
     // --- Topics ---
 
     private Topic buildTopic(Node node) {
+        // initialize type
         String typeId = getTypeId(node);
         // initialize label
         String label;
@@ -306,7 +316,12 @@ public class Neo4jStorage implements Storage {
         }
         // Note: the properties remain uninitialzed here.
         // It is up to the plugins to provide selected properties (see provideDataHook()).
-        return new Topic(node.getId(), typeId, label, new HashMap());
+        return new Topic(node.getId(), typeId, label, null);
+    }
+
+    private Relation buildRelation(Relationship rel) {
+        return new Relation(rel.getId(), rel.getType().name(),
+            rel.getStartNode().getId(), rel.getEndNode().getId(), null);
     }
 
     // --- Properties ---
@@ -373,10 +388,10 @@ public class Neo4jStorage implements Storage {
             // FIXME: a more elaborated criteria is required, e.g. an incoming DATA_FIELD relation
             return "Data Field";
         }
-        return (String) getNodeType(node).getProperty("type_id");
+        return (String) getTypeNode(node).getProperty("type_id");
     }
 
-    private Node getNodeType(Node node) {
+    private Node getTypeNode(Node node) {
         TraversalDescription desc = TraversalFactory.createTraversalDescription();
         desc = desc.relationships(MetaModelRelTypes.META_HAS_INSTANCE, Direction.INCOMING);
         desc = desc.filter(ReturnFilter.ALL_BUT_START_NODE);
@@ -398,7 +413,7 @@ public class Neo4jStorage implements Storage {
         return type;
     }
 
-    // ---
+    // --- Meta Model ---
 
     MetaModelClass getMetaClass(String typeId) {
         MetaModelClass metaClass = namespace.getMetaClass(typeId, false);
@@ -420,12 +435,13 @@ public class Neo4jStorage implements Storage {
         return namespace.getMetaProperty(dataFieldId, true);
     }
 
-    // ---
+    // --- Traversal ---
 
     private TraversalDescription createRelatedTopicsTraversalDescription(List<String> includeTopicTypes,
+                                                                         List<String> includeRelTypes,
                                                                          List<String> excludeRelTypes) {
         TraversalDescription desc = TraversalFactory.createTraversalDescription();
-        desc = desc.filter(new RelatedTopicsFilter(includeTopicTypes, excludeRelTypes));
+        desc = desc.filter(new RelatedTopicsFilter(includeTopicTypes, includeRelTypes, excludeRelTypes));
         desc = desc.prune(new DepthOnePruneEvaluator());
         return desc;
     }
@@ -433,24 +449,16 @@ public class Neo4jStorage implements Storage {
     private class RelatedTopicsFilter implements ReturnFilter {
 
         private List<String> includeTopicTypes;
-        private Map<String, Direction> excludeRelTypes = new HashMap();
+        private Map<String, Direction> includeRelTypes;
+        private Map<String, Direction> excludeRelTypes;
 
-        private RelatedTopicsFilter(List<String> includeTopicTypes, List<String> excludeRelTypes) {
+        private RelatedTopicsFilter(List<String> includeTopicTypes,
+                                    List<String> includeRelTypes, List<String> excludeRelTypes) {
             //
             this.includeTopicTypes = includeTopicTypes;
-            this.excludeRelTypes = new HashMap();
+            this.includeRelTypes = parseRelTypeFilter(includeRelTypes);
+            this.excludeRelTypes = parseRelTypeFilter(excludeRelTypes);
             //
-            for (String relFilter : excludeRelTypes) {
-                String[] relFilterTokens = relFilter.split(";");
-                String relTypeName = relFilterTokens[0];
-                Direction direction;
-                if (relFilterTokens.length == 1) {
-                    direction = Direction.BOTH;
-                } else {
-                    direction = Direction.valueOf(relFilterTokens[1]);
-                }
-                this.excludeRelTypes.put(relTypeName, direction);
-            }
         }
 
         @Override
@@ -458,24 +466,65 @@ public class Neo4jStorage implements Storage {
             if (position.atStartNode()) {
                 return false;
             }
-            // apply topic type filter
-            if (!includeTopicTypes.isEmpty() && !includeTopicTypes.contains(getTypeId(position.node()))) {
+            //
+            Node node = position.node();
+            // 1) apply topic type filter
+            if (!includeTopicTypes.isEmpty() && !includeTopicTypes.contains(getTypeId(node))) {
                 return false;
             }
-            // apply relation type filter
+            // 2) apply relation type filter
             Relationship rel = position.lastRelationship();
-            Direction direction = excludeRelTypes.get(rel.getType().name());
-            if (direction != null) {
-                if (direction == Direction.BOTH) {
-                    return false;
-                } if (direction == Direction.OUTGOING && position.node().equals(rel.getStartNode())) {
-                    return false;
-                } else if (direction == Direction.INCOMING && position.node().equals(rel.getEndNode())) {
+            String relTypeName = rel.getType().name();
+            // include
+            if (!includeRelTypes.isEmpty()) {
+                Direction dir = includeRelTypes.get(relTypeName);
+                if (dir != null) {
+                    return directionMatches(node, rel, dir);
+                } else {
                     return false;
                 }
             }
-            //
-            return true;
+            // exclude
+            Direction dir = excludeRelTypes.get(relTypeName);
+            if (dir != null) {
+                return !directionMatches(node, rel, dir);
+            } else {
+                return true;
+            }
+        }
+
+        // ---
+
+        private Map parseRelTypeFilter(List<String> relTypes) {
+            Map relTypeFilter = new HashMap();
+            for (String relFilter : relTypes) {
+                String[] relFilterTokens = relFilter.split(";");
+                String relTypeName = relFilterTokens[0];
+                Direction dir;
+                if (relFilterTokens.length == 1) {
+                    dir = Direction.BOTH;
+                } else {
+                    dir = Direction.valueOf(relFilterTokens[1]);
+                }
+                relTypeFilter.put(relTypeName, dir);
+            }
+            return relTypeFilter;
+        }
+
+        /**
+         * Returns true if the relationship has the given direction from the perspective of the node.
+         * Prerequisite: the given node is involved in the given relationship.
+         */
+        private boolean directionMatches(Node node, Relationship rel, Direction dir) {
+            if (dir == Direction.BOTH) {
+                return true;
+            } if (dir == Direction.OUTGOING && node.equals(rel.getStartNode())) {
+                return true;
+            } else if (dir == Direction.INCOMING && node.equals(rel.getEndNode())) {
+                return true;
+            } else {
+                return false;
+            }
         }
     }
 
