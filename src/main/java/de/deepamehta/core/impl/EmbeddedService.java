@@ -40,7 +40,8 @@ public class EmbeddedService implements DeepaMehtaService {
         PRE_UPDATE("preUpdateHook", Topic.class),
         POST_UPDATE("postUpdateHook", Topic.class),
 
-        PROVIDE_DATA("provideDataHook", Topic.class);
+        PROVIDE_TOPIC_PROPERTIES("providePropertiesHook", Topic.class),
+        PROVIDE_RELATION_PROPERTIES("providePropertiesHook", Relation.class);
 
         private final String name;
         private final Class[] paramClasses;
@@ -160,7 +161,7 @@ public class EmbeddedService implements DeepaMehtaService {
             topics = storage.getTopics(typeId);
             //
             for (Topic topic : topics) {
-                triggerHook(Hook.PROVIDE_DATA, topic);
+                triggerHook(Hook.PROVIDE_TOPIC_PROPERTIES, topic);
             }
             //
             tx.success();
@@ -187,8 +188,7 @@ public class EmbeddedService implements DeepaMehtaService {
         if (excludeRelTypes == null) excludeRelTypes = new ArrayList();
         // error check
         if (!includeRelTypes.isEmpty() && !excludeRelTypes.isEmpty()) {
-            throw new IllegalArgumentException("using includeRelTypes and excludeRelTypes at the same time " +
-                "is not possible");
+            throw new IllegalArgumentException("includeRelTypes and excludeRelTypes can not be used at the same time");
         }
         //
         List<RelatedTopic> relTopics = null;
@@ -198,7 +198,8 @@ public class EmbeddedService implements DeepaMehtaService {
             relTopics = storage.getRelatedTopics(topicId, includeTopicTypes, includeRelTypes, excludeRelTypes);
             //
             for (RelatedTopic relTopic : relTopics) {
-                triggerHook(Hook.PROVIDE_DATA, relTopic.getTopic());
+                triggerHook(Hook.PROVIDE_TOPIC_PROPERTIES, relTopic.getTopic());
+                triggerHook(Hook.PROVIDE_RELATION_PROPERTIES, relTopic.getRelation());
             }
             //
             tx.success();
@@ -272,33 +273,62 @@ public class EmbeddedService implements DeepaMehtaService {
 
     @Override
     public void setTopicProperties(long id, Map properties) {
+        RuntimeException ex = null;
         Transaction tx = storage.beginTx();
         try {
             storage.setTopicProperties(id, properties);
             tx.success();   
         } catch (Throwable e) {
-            e.printStackTrace();
             logger.warning("ROLLBACK!");
+            ex = new RuntimeException("Properties of topic " + id + " can't be set (" + properties + ")", e);
         } finally {
             tx.finish();
+            if (ex != null) {
+                throw ex;
+            }
         }
     }
 
     @Override
     public void deleteTopic(long id) {
+        RuntimeException ex = null;
         Transaction tx = storage.beginTx();
         try {
             storage.deleteTopic(id);
             tx.success();
         } catch (Throwable e) {
-            e.printStackTrace();
             logger.warning("ROLLBACK!");
+            ex = new RuntimeException("Topic " + id + " can't be deleted", e);
         } finally {
             tx.finish();
+            if (ex != null) {
+                throw ex;
+            }
         }
     }
 
     // --- Relations ---
+
+    @Override
+    public Relation getRelation(long id) {
+        Relation relation = null;
+        RuntimeException ex = null;
+        Transaction tx = storage.beginTx();
+        try {
+            relation = storage.getRelation(id);
+            tx.success();   
+        } catch (Throwable e) {
+            logger.warning("ROLLBACK!");
+            ex = new RuntimeException("Relation " + id + " can't be retrieved", e);
+        } finally {
+            tx.finish();
+            if (ex == null) {
+                return relation;
+            } else {
+                throw ex;
+            }
+        }
+    }
 
     @Override
     public Relation getRelation(long srcTopicId, long dstTopicId) {
@@ -347,16 +377,38 @@ public class EmbeddedService implements DeepaMehtaService {
     }
 
     @Override
+    public void setRelationProperties(long id, Map properties) {
+        RuntimeException ex = null;
+        Transaction tx = storage.beginTx();
+        try {
+            storage.setRelationProperties(id, properties);
+            tx.success();   
+        } catch (Throwable e) {
+            logger.warning("ROLLBACK!");
+            ex = new RuntimeException("Properties of relation " + id + " can't be set (" + properties + ")", e);
+        } finally {
+            tx.finish();
+            if (ex != null) {
+                throw ex;
+            }
+        }
+    }
+
+    @Override
     public void deleteRelation(long id) {
+        RuntimeException ex = null;
         Transaction tx = storage.beginTx();
         try {
             storage.deleteRelation(id);
             tx.success();
         } catch (Throwable e) {
-            e.printStackTrace();
             logger.warning("ROLLBACK!");
+            ex = new RuntimeException("Relation " + id + " can't be deleted", e);
         } finally {
             tx.finish();
+            if (ex != null) {
+                throw ex;
+            }
         }
     }
 

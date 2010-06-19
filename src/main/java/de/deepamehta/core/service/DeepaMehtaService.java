@@ -59,6 +59,8 @@ public interface DeepaMehtaService {
 
     // --- Relations ---
 
+    public Relation getRelation(long id);
+
     /**
      * Returns the relation between the two topics (regardless of type and direction).
      * If no such relation exists null is returned.
@@ -67,6 +69,8 @@ public interface DeepaMehtaService {
     public Relation getRelation(long srcTopicId, long dstTopicId);
 
     public Relation createRelation(String typeId, long srcTopicId, long dstTopicId, Map properties);
+
+    public void setRelationProperties(long id, Map properties);
 
     public void deleteRelation(long id);
 

@@ -9,7 +9,7 @@ import java.util.Map;
 
 
 /**
- * A topic data transfer object.
+ * A relation data transfer object.
  */
 public class Relation {
 
@@ -17,7 +17,7 @@ public class Relation {
     public String typeId;
     public long srcTopicId;
     public long dstTopicId;
-    public Map<String, Object> properties;
+    public Map<String, String> properties;
 
     public Relation(long id, String typeId, long srcTopicId, long dstTopicId, Map properties) {
         this.id = id;
@@ -29,6 +29,16 @@ public class Relation {
 
     public Relation(Relation relation) {
         this(relation.id, relation.typeId, relation.srcTopicId, relation.dstTopicId, relation.properties);
+    }
+
+    // ---
+
+    public String getProperty(String key) {
+        return properties.get(key);
+    }
+
+    public void setProperty(String key, String value) {
+        properties.put(key, value);
     }
 
     // ---

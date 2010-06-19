@@ -1,5 +1,6 @@
 package de.deepamehta.core.plugin;
 
+import de.deepamehta.core.model.Relation;
 import de.deepamehta.core.model.Topic;
 import de.deepamehta.core.service.DeepaMehtaService;
 import de.deepamehta.core.service.Migration;
@@ -145,7 +146,10 @@ public class DeepaMehtaPlugin implements BundleActivator {
 
     // ---
 
-    public void provideDataHook(Topic topic) {
+    public void providePropertiesHook(Topic topic) {
+    }
+
+    public void providePropertiesHook(Relation relation) {
     }
 
 
@@ -248,9 +252,6 @@ public class DeepaMehtaPlugin implements BundleActivator {
                 initParams.put("com.sun.jersey.config.property.packages", pluginPackage + ".resources");
             	//
                 httpService.registerServlet(namespace, new ServletContainer(), initParams, null);
-            } else {
-                logger.info("No need to register REST resources for plugin \"" + pluginName +
-                    "\" (plugin provides no one)");
             }
         } catch (Exception e) {
             throw new RuntimeException("REST resources of plugin \"" + pluginName + "\" can't be registered", e);

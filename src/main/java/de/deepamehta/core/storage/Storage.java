@@ -12,6 +12,9 @@ import java.util.Set;
 
 
 
+/**
+ * Specification of the DeepaMehta storage layer in a DBMS-agnostic way.
+ */
 public interface Storage {
 
     // --- Topics ---
@@ -38,9 +41,13 @@ public interface Storage {
 
     // --- Relations ---
 
+    public Relation getRelation(long id);
+
     public Relation getRelation(long srcTopicId, long dstTopicId);
 
     public Relation createRelation(String typeId, long srcTopicId, long dstTopicId, Map properties);
+
+    public void setRelationProperties(long id, Map properties);
 
     public void deleteRelation(long id);
 

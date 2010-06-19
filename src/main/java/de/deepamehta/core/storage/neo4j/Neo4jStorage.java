@@ -8,6 +8,7 @@ import de.deepamehta.core.model.Relation;
 import de.deepamehta.core.storage.Storage;
 
 import org.neo4j.graphdb.Direction;
+import org.neo4j.graphdb.DynamicRelationshipType;
 import org.neo4j.graphdb.GraphDatabaseService;
 import org.neo4j.graphdb.Node;
 import org.neo4j.graphdb.PropertyContainer;
@@ -79,15 +80,14 @@ public class Neo4jStorage implements Storage {
 
     @Override
     public Topic getTopic(long id) {
-        logger.info("Getting topic " + id);
+        logger.info("Getting node " + id);
         Node node = graphDb.getNodeById(id);
-        // FIXME: label remains uninitialized
-        return new Topic(id, getTypeId(node), null, getProperties(node));
+        return new Topic(id, getTypeId(node), null, getProperties(node));   // FIXME: label remains uninitialized
     }
 
     @Override
     public Topic getTopic(String key, Object value) {
-        logger.info("Getting topic by property (" + key + "=" + value + ")");
+        logger.info("Getting node by property (" + key + "=" + value + ")");
         Node node = index.getSingleNode(key, value);
         // FIXME: type and label remain uninitialized
         return node != null ? new Topic(node.getId(), null, null, getProperties(node)) : null;
@@ -119,10 +119,12 @@ public class Neo4jStorage implements Storage {
         for (Position pos : desc.traverse(startNode)) {
             RelatedTopic relTopic = new RelatedTopic();
             relTopic.setTopic(buildTopic(pos.node()));
-            relTopic.setRelation(buildRelation(pos.lastRelationship()));
+            // Note: the relation properties remain uninitialzed here.
+            // It is up to the plugins to provide selected properties (see providePropertiesHook()).
+            relTopic.setRelation(buildRelation(pos.lastRelationship(), false));
             relTopics.add(relTopic);
         }
-        logger.info("=> " + relTopics.size() + " related topics");
+        logger.info("=> " + relTopics.size() + " related nodes");
         return relTopics;
     }
 
@@ -131,11 +133,12 @@ public class Neo4jStorage implements Storage {
         if (fieldId == null) fieldId = "default";
         if (!wholeWord) searchTerm += "*";
         IndexHits<Node> hits = fulltextIndex.getNodes(fieldId, searchTerm);
-        logger.info("Searching \"" + searchTerm + "\" in field \"" + fieldId + "\" => " + hits.size() + " topics");
+        logger.info("Searching \"" + searchTerm + "\" in field \"" + fieldId + "\" => " + hits.size() + " nodes");
         List result = new ArrayList();
         for (Node node : hits) {
-            logger.fine("Adding topic " + node.getId());
+            logger.fine("Adding node " + node.getId());
             // Filter result set. Note: a search should not find other searches.
+            //
             // TODO: drop this filter. Items not intended for being find should not be indexed at all. Model change
             // required: the indexing mode must be specified per topic type/data field pair instead per data field.
             if (!getTypeId(node).equals("Search Result")) {
@@ -143,14 +146,14 @@ public class Neo4jStorage implements Storage {
                 result.add(new Topic(node.getId(), null, null, null));
             }
         }
-        logger.info("After filtering => " + result.size() + " topics");
+        logger.info("After filtering => " + result.size() + " nodes");
         return result;
     }
 
     @Override
     public Topic createTopic(String typeId, Map properties) {
         Node node = graphDb.createNode();
-        logger.info("Creating topic => ID=" + node.getId());
+        logger.info("Creating node => ID=" + node.getId());
         // setNodeType(node, typeId);
         getMetaClass(typeId).getDirectInstances().add(node);
         setProperties(node, properties, typeId);
@@ -159,14 +162,14 @@ public class Neo4jStorage implements Storage {
 
     @Override
     public void setTopicProperties(long id, Map properties) {
-        logger.info("Setting properties of topic " + id + ": " + properties.toString());
+        logger.info("Setting properties of node " + id + ": " + properties);
         Node node = graphDb.getNodeById(id);
         setProperties(node, properties);
     }
 
     @Override
     public void deleteTopic(long id) {
-        logger.info("Deleting topic " + id);
+        logger.info("Deleting node " + id);
         Node node = graphDb.getNodeById(id);
         // delete relationships
         for (Relationship rel : node.getRelationships()) {
@@ -179,8 +182,15 @@ public class Neo4jStorage implements Storage {
     // --- Relations ---
 
     @Override
+    public Relation getRelation(long id) {
+        logger.info("Getting relationship " + id);
+        Relationship relationship = graphDb.getRelationshipById(id);
+        return buildRelation(relationship, true);
+    }
+
+    @Override
     public Relation getRelation(long srcTopicId, long dstTopicId) {
-        logger.info("Getting relationship between topics " + srcTopicId + " and " + dstTopicId);
+        logger.info("Getting relationship between nodes " + srcTopicId + " and " + dstTopicId);
         Relationship relationship = null;
         Node node = graphDb.getNodeById(srcTopicId);
         for (Relationship rel : node.getRelationships()) {
@@ -192,8 +202,7 @@ public class Neo4jStorage implements Storage {
         }
         if (relationship != null) {
             logger.info("=> relationship found (ID=" + relationship.getId() + ")");
-            // FIXME: typeId and properties remain uninitialized
-            return new Relation(relationship.getId(), null, srcTopicId, dstTopicId, null);
+            return buildRelation(relationship, true);
         } else {
             logger.info("=> no such relationship");
             return null;
@@ -202,12 +211,19 @@ public class Neo4jStorage implements Storage {
 
     @Override
     public Relation createRelation(String typeId, long srcTopicId, long dstTopicId, Map properties) {
-        logger.info("Creating \"" + typeId + "\" relationship from topic " + srcTopicId + " to " + dstTopicId);
+        logger.info("Creating \"" + typeId + "\" relationship from node " + srcTopicId + " to " + dstTopicId);
         Node srcNode = graphDb.getNodeById(srcTopicId);
         Node dstNode = graphDb.getNodeById(dstTopicId);
-        Relationship relationship = srcNode.createRelationshipTo(dstNode, RelType.valueOf(typeId));
+        Relationship relationship = srcNode.createRelationshipTo(dstNode, getRelationshipType(typeId));
         setProperties(relationship, properties);
         return new Relation(relationship.getId(), typeId, srcTopicId, dstTopicId, properties);
+    }
+
+    @Override
+    public void setRelationProperties(long id, Map properties) {
+        logger.info("Setting properties of relationship " + id + ": " + properties);
+        Relationship relationship = graphDb.getRelationshipById(id);
+        setProperties(relationship, properties);
     }
 
     @Override
@@ -315,13 +331,21 @@ public class Neo4jStorage implements Storage {
             label = (String) node.getProperty(fieldId);
         }
         // Note: the properties remain uninitialzed here.
-        // It is up to the plugins to provide selected properties (see provideDataHook()).
+        // It is up to the plugins to provide selected properties (see providePropertiesHook()).
         return new Topic(node.getId(), typeId, label, null);
     }
 
-    private Relation buildRelation(Relationship rel) {
+    // --- Relations ---
+
+    /**
+     * Builds a DeepaMehta relation from a Neo4j relationship.
+     *
+     * @param   includeProperties   if true, the relation properties are fetched.
+     */
+    private Relation buildRelation(Relationship rel, boolean includeProperties) {
+        Map properties = includeProperties ? getProperties(rel) : null;
         return new Relation(rel.getId(), rel.getType().name(),
-            rel.getStartNode().getId(), rel.getEndNode().getId(), null);
+            rel.getStartNode().getId(), rel.getEndNode().getId(), properties);
     }
 
     // --- Properties ---
@@ -351,15 +375,17 @@ public class Neo4jStorage implements Storage {
             // update DB
             container.setProperty(key, value);
             // update index
-            indexProperty(container, key, value, typeId);
+            if (container instanceof Node) {
+                // Note: we only index node properties.
+                // Neo4j can't index relationship properties.
+                indexProperty((Node) container, key, value, typeId);
+            }
         }
     }
 
-    private void indexProperty(PropertyContainer container, String key, Object value, String typeId) {
-        // Note 1: we only index node properties. Neo4j can't index relationship properties.
-        // Note 2: we only index instance nodes. Meta nodes (types and fields) are responsible for indexing themself.
-        if (container instanceof Node && !typeId.equals("Topic Type") && !typeId.equals("Data Field")) {
-            Node node = (Node) container;
+    private void indexProperty(Node node, String key, Object value, String typeId) {
+        // Note: we only index instance nodes. Meta nodes (types and fields) are responsible for indexing themself.
+        if (!typeId.equals("Topic Type") && !typeId.equals("Data Field")) {
             DataField dataField = typeCache.get(typeId).getDataField(key);
             String indexingMode = dataField.indexingMode;
             if (indexingMode.equals("OFF")) {
@@ -411,6 +437,25 @@ public class Neo4jStorage implements Storage {
         }
         //
         return type;
+    }
+
+    // ---
+
+    private RelationshipType getRelationshipType(String typeId) {
+        try {
+            // 1st try: static types are returned directly
+            return RelType.valueOf(typeId);
+        } catch (IllegalArgumentException e) {
+            // 2nd try: search through dynamic types
+            for (RelationshipType relType : graphDb.getRelationshipTypes()) {
+                if (relType.name().equals(typeId)) {
+                    return relType;
+                }
+            }
+            // Last resort: create new type
+            logger.info("### Relation type \"" + typeId + "\" does not exist - Creating it dynamically");
+            return DynamicRelationshipType.withName(typeId);
+        }
     }
 
     // --- Meta Model ---
