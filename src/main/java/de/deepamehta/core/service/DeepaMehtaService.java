@@ -29,6 +29,12 @@ public interface DeepaMehtaService {
     public List<Topic> getTopics(String typeId);
 
     /**
+     * Retrives topics and relationships that are directly connected to the given topic, optionally filtered
+     * by topic types and relation types.
+     *
+     * IMPORTANT: the topics and relations returned by this method provide no properties.
+     * To initialize the properties needed by your plugin define its providePropertiesHook().
+     *
      * @param   includeRelTypes     The include relation type filter (optional).
      *                              A list of strings of the form "<relTypeName>[;<direction>]",
      *                              e.g. "TOPICMAP_TOPIC;INCOMING".
@@ -37,6 +43,9 @@ public interface DeepaMehtaService {
      *                              A list of strings of the form "<relTypeName>[;<direction>]",
      *                              e.g. "SEARCH_RESULT;OUTGOING".
      *                              Null or an empty list switches the filter off.
+     *
+     * @return  The related topics, each one as a pair: the topic (a Topic object), and the connecting relation
+     *          (a Relation object).
      */
     public List<RelatedTopic> getRelatedTopics(long topicId, List<String> includeTopicTypes,
                                                              List<String> includeRelTypes,

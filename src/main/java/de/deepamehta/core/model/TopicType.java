@@ -54,8 +54,8 @@ public class TopicType extends Topic {
         o.put("fields", fields);
         //
         JSONObject view = new JSONObject();
-        view.put("icon_src", getProperty("icon_src"));
-        view.put("label_field", getProperty("label_field"));
+        view.put("icon_src", getProperty("icon_src", null));
+        view.put("label_field", getProperty("label_field", null));
         o.put("view", view);
         //
         o.put("implementation", getProperty("implementation"));

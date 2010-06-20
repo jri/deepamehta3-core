@@ -323,12 +323,12 @@ public class Neo4jStorage implements Storage {
         // initialize label
         String label;
         TopicType topicType = typeCache.get(typeId);
-        String typeLabelField = (String) topicType.getProperty("label_field");
+        String typeLabelField = (String) topicType.getProperty("label_field", null);
         if (typeLabelField != null) {
             throw new RuntimeException("not yet implemented");
         } else {
             String fieldId = topicType.getDataField(0).id;
-            label = (String) node.getProperty(fieldId);
+            label = node.getProperty(fieldId).toString();   // Note: property value can be a number as well
         }
         // Note: the properties remain uninitialzed here.
         // It is up to the plugins to provide selected properties (see providePropertiesHook()).

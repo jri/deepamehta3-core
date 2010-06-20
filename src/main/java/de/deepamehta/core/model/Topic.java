@@ -32,7 +32,18 @@ public class Topic {
     // ---
 
     public Object getProperty(String key) {
-        return properties.get(key);
+        Object value = properties.get(key);
+        if (value == null) {
+            throw new RuntimeException("Property \"" + key + "\" of " + this + " is not initialized. " +
+                "Remember: topics obtained by getRelatedTopics() provide no properties. " +
+                "Use the providePropertiesHook() to initialize the properties you need.");
+        }
+        return value;
+    }
+
+    public Object getProperty(String key, Object defaultValue) {
+        Object value = properties.get(key);
+        return value != null ? value : defaultValue;
     }
 
     public void setProperty(String key, Object value) {
@@ -52,6 +63,6 @@ public class Topic {
 
     @Override
     public String toString() {
-        return "topic " + id + " (typeId=\"" + typeId + "\", label=\"" + label + "\")";
+        return "topic " + id + " (typeId=\"" + typeId + "\", label=\"" + label + "\", properties=" + properties + ")";
     }
 }
