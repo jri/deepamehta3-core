@@ -34,7 +34,7 @@ public class TypeCache {
     }
 
     public void put(TopicType topicType) {
-        String typeId = topicType.getProperty("type_id");
+        String typeId = (String) topicType.getProperty("type_id");
         topicTypes.put(typeId, topicType);
     }
 

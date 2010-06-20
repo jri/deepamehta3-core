@@ -23,7 +23,7 @@ public interface Storage {
 
     public Topic getTopic(String key, Object value);
 
-    public String getTopicProperty(long topicId, String key);
+    public Object getTopicProperty(long topicId, String key);
 
     public List<Topic> getTopics(String typeId);
 

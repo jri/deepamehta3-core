@@ -91,7 +91,7 @@ public class DataField {
         return this;
     }
 
-    // "text" (default) / "date" / "html" / "relation"
+    // "text" (default) / "number" / "date" / "html" / "relation"
     public DataField setDataType(String dataType) {
         this.dataType = dataType;
         return this;

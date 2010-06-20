@@ -94,8 +94,8 @@ public class Neo4jStorage implements Storage {
     }
 
     @Override
-    public String getTopicProperty(long topicId, String key) {
-        return (String) graphDb.getNodeById(topicId).getProperty(key, null);
+    public Object getTopicProperty(long topicId, String key) {
+        return graphDb.getNodeById(topicId).getProperty(key, null);
     }
 
     @Override
@@ -299,12 +299,12 @@ public class Neo4jStorage implements Storage {
 
     @Override
     public int getDbModelVersion() {
-        return Integer.parseInt((String) graphDb.getReferenceNode().getProperty("db_model_version"));
+        return (Integer) graphDb.getReferenceNode().getProperty("db_model_version");
     }
 
     @Override
     public void setDbModelVersion(int dbModelVersion) {
-        graphDb.getReferenceNode().setProperty("db_model_version", String.valueOf(dbModelVersion));
+        graphDb.getReferenceNode().setProperty("db_model_version", dbModelVersion);
     }
 
 
@@ -323,7 +323,7 @@ public class Neo4jStorage implements Storage {
         // initialize label
         String label;
         TopicType topicType = typeCache.get(typeId);
-        String typeLabelField = topicType.getProperty("label_field");
+        String typeLabelField = (String) topicType.getProperty("label_field");
         if (typeLabelField != null) {
             throw new RuntimeException("not yet implemented");
         } else {

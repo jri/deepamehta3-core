@@ -132,8 +132,8 @@ public class EmbeddedService implements DeepaMehtaService {
     }
 
     @Override
-    public String getTopicProperty(long topicId, String key) {
-        String value = null;
+    public Object getTopicProperty(long topicId, String key) {
+        Object value = null;
         RuntimeException ex = null;
         Transaction tx = storage.beginTx();
         try {
@@ -572,7 +572,7 @@ public class EmbeddedService implements DeepaMehtaService {
 
     private void updatePluginDbModelVersion(DeepaMehtaPlugin plugin, int dbModelVersion) {
         Map properties = new HashMap();
-        properties.put("db_model_version", String.valueOf(dbModelVersion));
+        properties.put("db_model_version", dbModelVersion);
         setTopicProperties(plugin.getPluginTopic().id, properties);
     }
 

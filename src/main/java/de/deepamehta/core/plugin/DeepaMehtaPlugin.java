@@ -298,7 +298,7 @@ public class DeepaMehtaPlugin implements BundleActivator {
             logger.info("Creating topic for plugin \"" + pluginName + "\"");
             Map properties = new HashMap();
             properties.put("plugin_id", pluginId);
-            properties.put("db_model_version", "0");
+            properties.put("db_model_version", 0);
             pluginTopic = dms.createTopic("Plugin", properties, null);     // FIXME: clientContext=null
         }
     }
@@ -322,7 +322,7 @@ public class DeepaMehtaPlugin implements BundleActivator {
     }
 
     private void runPluginMigrations() {
-        int dbModelVersion = Integer.parseInt(pluginTopic.getProperty("db_model_version"));
+        int dbModelVersion = (Integer) pluginTopic.getProperty("db_model_version");
         int requiredPluginDbVersion = Integer.parseInt(getProperty("requiredPluginDBVersion", "0"));
         int migrationsToRun = requiredPluginDbVersion - dbModelVersion;
         logger.info("dbModelVersion=" + dbModelVersion + ", requiredPluginDbVersion=" + requiredPluginDbVersion +

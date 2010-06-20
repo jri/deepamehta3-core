@@ -36,7 +36,7 @@
 		type_id: "Plugin",
         fields: [
             {id: "plugin_id", model: {type: "text"}, view: {editor: "single line", label: "Plugin ID"}, indexing_mode: "KEY"},
-            {id: "db_model_version", model: {type: "text"}, view: {editor: "single line", label: "DB Model Version"}}
+            {id: "db_model_version", model: {type: "number"}, view: {editor: "single line", label: "DB Model Version"}}
         ],
         implementation: "PlainDocument"
     }

@@ -17,7 +17,7 @@ public class Relation {
     public String typeId;
     public long srcTopicId;
     public long dstTopicId;
-    public Map<String, String> properties;
+    public Map<String, Object> properties;
 
     public Relation(long id, String typeId, long srcTopicId, long dstTopicId, Map properties) {
         this.id = id;
@@ -33,11 +33,11 @@ public class Relation {
 
     // ---
 
-    public String getProperty(String key) {
+    public Object getProperty(String key) {
         return properties.get(key);
     }
 
-    public void setProperty(String key, String value) {
+    public void setProperty(String key, Object value) {
         properties.put(key, value);
     }
 
