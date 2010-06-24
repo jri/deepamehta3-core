@@ -47,7 +47,7 @@ public abstract class Migration {
         JSONArray types = new JSONArray(json);
         for (int i = 0; i < types.length(); i++) {
             TopicType topicType = new TopicType(types.getJSONObject(i));
-            dms.createTopicType(topicType.properties, topicType.dataFields);
+            dms.createTopicType(topicType.properties, topicType.getDataFields());
         }
     }
 }

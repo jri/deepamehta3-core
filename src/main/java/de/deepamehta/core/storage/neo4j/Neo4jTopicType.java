@@ -34,6 +34,11 @@ class Neo4jTopicType extends TopicType {
 
     private Logger logger = Logger.getLogger(getClass().getName());
 
+    // ---
+
+    /**
+     * Constructs a topic type and writes it to the database.
+     */
     Neo4jTopicType(Map<String, Object> properties, List<DataField> dataFields, Neo4jStorage storage) {
         super(properties, new ArrayList());
         this.storage = storage;
@@ -60,27 +65,23 @@ class Neo4jTopicType extends TopicType {
         this.storage = storage;
         this.typeNode = getTypeNode(typeId);
         this.properties = storage.getProperties(typeNode);
-        this.dataFields = getDataFields(typeId);
+        this.dataFields = readDataFields();
     }
 
     // ---
 
+    /**
+     * Adds a data field to this topic type and writes the data field to the database.
+     */
     @Override
     public void addDataField(DataField dataField) {
         String typeId = (String) properties.get("type_id");
         // create data field
-        MetaModelProperty metaProperty = storage.createMetaProperty(dataField.id);
-        Node fieldNode = metaProperty.node();
-        logger.info("Creating data field \"" + dataField.id + "\" for topic type \"" +
-            typeId + "\" => ID=" + fieldNode.getId());
-        storage.getMetaClass(typeId).getDirectProperties().add(metaProperty);
-        // set properties
-        Map<String, String> properties = dataField.getProperties();
-        for (String key : properties.keySet()) {
-            fieldNode.setProperty(key, properties.get(key));
-        }
+        Neo4jDataField field = new Neo4jDataField(dataField, storage);
+        storage.getMetaClass(typeId).getDirectProperties().add(field.getMetaProperty());
         // put in sequence
         Relationship rel;
+        Node fieldNode = field.getNode();
         if (dataFields.size() == 0) {
             rel = typeNode.createRelationshipTo(fieldNode, Neo4jStorage.RelType.SEQUENCE_START);
         } else {
@@ -89,12 +90,16 @@ class Neo4jTopicType extends TopicType {
         }
         rel.setProperty("topic_type_id", typeId);
         //
-        super.addDataField(new Neo4jDataField(properties, fieldNode));
+        super.addDataField(field);
     }
 
     // ---
 
-    private List<DataField> getDataFields(String typeId) {
+    /**
+     * Reads the data fields of this topic type from the database.
+     */
+    private List<DataField> readDataFields() {
+        String typeId = (String) properties.get("type_id");
         // use as control group
         List propNodes = new ArrayList();
         for (MetaModelProperty metaProp : storage.getMetaClass(typeId).getDirectProperties()) {

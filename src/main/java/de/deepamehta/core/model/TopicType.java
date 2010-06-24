@@ -13,7 +13,9 @@ import java.util.Map;
 
 public class TopicType extends Topic {
 
-    public List<DataField> dataFields;
+    protected List<DataField> dataFields;
+
+    // ---
 
     public TopicType(Map properties, List dataFields) {
         super(-1, "Topic Type", null, properties);      // id and label remain uninitialized

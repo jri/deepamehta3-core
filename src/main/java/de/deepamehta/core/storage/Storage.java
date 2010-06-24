@@ -37,12 +37,20 @@ public interface Storage {
 
     public void setTopicProperties(long id, Map properties);
 
+    /**
+     * Deletes the topic and all of its relations.
+     */
     public void deleteTopic(long id);
 
     // --- Relations ---
 
     public Relation getRelation(long id);
 
+    /**
+     * Returns the relation between the two topics (regardless of type and direction).
+     * If no such relation exists null is returned.
+     * If more than one relation exists, only the first one is returned.
+     */
     public Relation getRelation(long srcTopicId, long dstTopicId);
 
     public Relation createRelation(String typeId, long srcTopicId, long dstTopicId, Map properties);
@@ -61,11 +69,13 @@ public interface Storage {
 
     public void addDataField(String typeId, DataField dataField);
 
+    public void updateDataField(String typeId, DataField dataField);
+
     // --- DB ---
 
     public Transaction beginTx();
 
-    public void setup();
+    public void init();
 
     public void shutdown();
 

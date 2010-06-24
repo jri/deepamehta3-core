@@ -93,6 +93,8 @@ public interface DeepaMehtaService {
 
     public void addDataField(String typeId, DataField dataField);
 
+    public void updateDataField(String typeId, DataField dataField);
+
     // --- Plugins ---
 
     public void registerPlugin(String pluginId, DeepaMehtaPlugin plugin);

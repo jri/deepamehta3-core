@@ -417,32 +417,42 @@ public class EmbeddedService implements DeepaMehtaService {
     @Override
     public Set<String> getTopicTypeIds() {
         Set typeIds = null;
+        RuntimeException ex = null;
         Transaction tx = storage.beginTx();
         try {
             typeIds = storage.getTopicTypeIds();
             tx.success();
         } catch (Throwable e) {
-            e.printStackTrace();
             logger.warning("ROLLBACK!");
+            ex = new RuntimeException("Topic type IDs can't be retrieved", e);
         } finally {
             tx.finish();
-            return typeIds;
+            if (ex == null) {
+                return typeIds;
+            } else {
+                throw ex;
+            }
         }
     }
 
     @Override
     public TopicType getTopicType(String typeId) {
         TopicType topicType = null;
+        RuntimeException ex = null;
         Transaction tx = storage.beginTx();
         try {
             topicType = storage.getTopicType(typeId);
             tx.success();
         } catch (Throwable e) {
-            e.printStackTrace();
             logger.warning("ROLLBACK!");
+            ex = new RuntimeException("Topic type \"" + typeId + "\" can't be retrieved", e);
         } finally {
             tx.finish();
-            return topicType;
+            if (ex == null) {
+                return topicType;
+            } else {
+                throw ex;
+            }
         }
     }
 
@@ -471,15 +481,39 @@ public class EmbeddedService implements DeepaMehtaService {
 
     @Override
     public void addDataField(String typeId, DataField dataField) {
+        RuntimeException ex = null;
         Transaction tx = storage.beginTx();
         try {
             storage.addDataField(typeId, dataField);
             tx.success();
         } catch (Throwable e) {
-            e.printStackTrace();
             logger.warning("ROLLBACK!");
+            ex = new RuntimeException("Data field \"" + dataField.id + "\" can't be added to topic type \"" +
+                typeId + "\"", e);
         } finally {
             tx.finish();
+            if (ex != null) {
+                throw ex;
+            }
+        }
+    }
+
+    @Override
+    public void updateDataField(String typeId, DataField dataField) {
+        RuntimeException ex = null;
+        Transaction tx = storage.beginTx();
+        try {
+            storage.updateDataField(typeId, dataField);
+            tx.success();
+        } catch (Throwable e) {
+            logger.warning("ROLLBACK!");
+            ex = new RuntimeException("Data field \"" + dataField.id + "\" of topic type \"" +
+                typeId + "\" can't be updated", e);
+        } finally {
+            tx.finish();
+            if (ex != null) {
+                throw ex;
+            }
         }
     }
 
@@ -584,7 +618,7 @@ public class EmbeddedService implements DeepaMehtaService {
     }
 
     private void initDB() {
-        storage.setup();
+        storage.init();
     }
 
     private void closeDB() {

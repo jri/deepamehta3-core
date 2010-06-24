@@ -111,10 +111,14 @@ public class Neo4jStorage implements Storage {
     public List<RelatedTopic> getRelatedTopics(long topicId, List<String> includeTopicTypes,
                                                              List<String> includeRelTypes,
                                                              List<String> excludeRelTypes) {
-        List relTopics = new ArrayList();
+        // Note: we must exclude the meta-model's namespace and property nodes. They are not intended for
+        // being exposed to the user (additionally, getTypeNode() would fail on these nodes).
+        excludeRelTypes.add("META_CLASS;OUTGOING");
+        excludeRelTypes.add("META_HAS_PROPERTY;INCOMING");
         TraversalDescription desc = createRelatedTopicsTraversalDescription(includeTopicTypes,
                                                                             includeRelTypes,
                                                                             excludeRelTypes);
+        List relTopics = new ArrayList();
         Node startNode = graphDb.getNodeById(topicId);
         for (Position pos : desc.traverse(startNode)) {
             RelatedTopic relTopic = new RelatedTopic();
@@ -258,6 +262,11 @@ public class Neo4jStorage implements Storage {
         typeCache.get(typeId).addDataField(dataField);
     }
 
+    @Override
+    public void updateDataField(String typeId, DataField dataField) {
+        typeCache.get(typeId).getDataField(dataField.id).update(dataField.getProperties());
+    }
+
     // --- DB ---
 
     @Override
@@ -269,14 +278,14 @@ public class Neo4jStorage implements Storage {
      * Performs storage layer initialization which is required to run in a transaction.
      */
     @Override
-    public void setup() {
-        // init index services
+    public void init() {
+        // 1) init indexing services
         index = new LuceneIndexService(graphDb);
         fulltextIndex = new LuceneFulltextQueryIndexService(graphDb);
-        // init meta model
+        // 2) init meta model
         MetaModel model = new MetaModelImpl(graphDb, index);
         namespace = model.getGlobalNamespace();
-        // init DB model version
+        // 3) init DB model version
         if (!graphDb.getReferenceNode().hasProperty("db_model_version")) {
             logger.info("Starting with a fresh DB - Setting DB model version to 0");
             setDbModelVersion(0);
@@ -410,9 +419,10 @@ public class Neo4jStorage implements Storage {
         if (node.getProperty("type_id", null) != null) {
             // FIXME: a more elaborated criteria is required, e.g. an incoming TOPIC_TYPE relation
             return "Topic Type";
-        } else if (node.getProperty("data_type", null) != null) {
+        // FIXME: drop "Data Field" detection?
+        /* } else if (node.getProperty("data_type", null) != null) {
             // FIXME: a more elaborated criteria is required, e.g. an incoming DATA_FIELD relation
-            return "Data Field";
+            return "Data Field"; */
         }
         return (String) getTypeNode(node).getProperty("type_id");
     }
@@ -511,31 +521,31 @@ public class Neo4jStorage implements Storage {
             if (position.atStartNode()) {
                 return false;
             }
-            //
+            // Note: we must apply the relation type filter first in order to sort out the meta-model's namespace and
+            // property nodes before the topic type filter would see them (getTypeId() would fail on these nodes).
             Node node = position.node();
-            // 1) apply topic type filter
-            if (!includeTopicTypes.isEmpty() && !includeTopicTypes.contains(getTypeId(node))) {
-                return false;
-            }
-            // 2) apply relation type filter
+            // 1) apply relation type filter
             Relationship rel = position.lastRelationship();
             String relTypeName = rel.getType().name();
-            // include
+            // apply include filter
             if (!includeRelTypes.isEmpty()) {
                 Direction dir = includeRelTypes.get(relTypeName);
-                if (dir != null) {
-                    return directionMatches(node, rel, dir);
-                } else {
+                if (dir == null || !directionMatches(node, rel, dir)) {
+                    return false;
+                }
+            } else {
+                // apply exclude filter
+                Direction dir = excludeRelTypes.get(relTypeName);
+                if (dir != null && directionMatches(node, rel, dir)) {
                     return false;
                 }
             }
-            // exclude
-            Direction dir = excludeRelTypes.get(relTypeName);
-            if (dir != null) {
-                return !directionMatches(node, rel, dir);
-            } else {
-                return true;
+            // 2) apply topic type filter
+            if (!includeTopicTypes.isEmpty() && !includeTopicTypes.contains(getTypeId(node))) {
+                return false;
             }
+            //
+            return true;
         }
 
         // ---

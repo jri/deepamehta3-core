@@ -28,12 +28,8 @@ public class DataField {
         setId(id);
     }
 
-    public DataField(Map<String, String> properties) {
-        setId(properties.get("id"));
-        setDataType(properties.get("data_type"));
-        setRelatedTypeId(properties.get("related_type_id"));
-        setEditor(properties.get("editor"));
-        setIndexingMode(properties.get("indexing_mode"));
+    public DataField(Map properties) {
+        update(properties);
     }
 
     public DataField(JSONObject dataField) throws JSONException {
@@ -84,6 +80,14 @@ public class DataField {
         return properties;
     }
 
+    public void update(Map<String, String> properties) {
+        setId(properties.get("id"));
+        setDataType(properties.get("data_type"));
+        setRelatedTypeId(properties.get("related_type_id"));
+        setEditor(properties.get("editor"));
+        setIndexingMode(properties.get("indexing_mode"));
+    }
+
     // ---
 
     public DataField setId(String id) {
@@ -113,5 +117,13 @@ public class DataField {
     public DataField setIndexingMode(String indexingMode) {
         this.indexingMode = indexingMode;
         return this;
+    }
+
+    // ---
+
+    @Override
+    public String toString() {
+        return "data field \"" + id + "\" (dataType=\"" + dataType + "\" relatedTypeId=\"" + relatedTypeId +
+            "\" editor=\"" + editor + "\" indexingMode=\"" + indexingMode + "\")";
     }
 }
