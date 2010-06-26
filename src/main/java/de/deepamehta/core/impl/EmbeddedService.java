@@ -5,9 +5,9 @@ import de.deepamehta.core.model.Topic;
 import de.deepamehta.core.model.TopicType;
 import de.deepamehta.core.model.RelatedTopic;
 import de.deepamehta.core.model.Relation;
-import de.deepamehta.core.plugin.DeepaMehtaPlugin;
 import de.deepamehta.core.service.DeepaMehtaService;
 import de.deepamehta.core.service.Migration;
+import de.deepamehta.core.service.Plugin;
 import de.deepamehta.core.storage.Storage;
 import de.deepamehta.core.storage.Transaction;
 import de.deepamehta.core.storage.neo4j.Neo4jStorage;
@@ -29,7 +29,7 @@ import java.util.logging.Logger;
 
 public class EmbeddedService implements DeepaMehtaService {
 
-    private Map<String, DeepaMehtaPlugin> plugins = new HashMap();
+    private Map<String, Plugin> plugins = new HashMap();
 
     private Storage storage;
 
@@ -538,7 +538,7 @@ public class EmbeddedService implements DeepaMehtaService {
     // --- Plugins ---
 
     @Override
-    public void registerPlugin(String pluginId, DeepaMehtaPlugin plugin) {
+    public void registerPlugin(String pluginId, Plugin plugin) {
         plugins.put(pluginId, plugin);
     }
 
@@ -555,12 +555,12 @@ public class EmbeddedService implements DeepaMehtaService {
     }
 
     @Override
-    public DeepaMehtaPlugin getPlugin(String pluginId) {
+    public Plugin getPlugin(String pluginId) {
         return plugins.get(pluginId);
     }
 
     @Override
-    public void runPluginMigration(DeepaMehtaPlugin plugin, int migrationNr) throws RuntimeException {
+    public void runPluginMigration(Plugin plugin, int migrationNr) throws RuntimeException {
         RuntimeException ex = null;
         Transaction tx = storage.beginTx();
         try {
@@ -616,13 +616,13 @@ public class EmbeddedService implements DeepaMehtaService {
     private void triggerHook(Hook hook, Object... params) throws NoSuchMethodException,
                                                                  IllegalAccessException,
                                                                  InvocationTargetException {
-        for (DeepaMehtaPlugin plugin : plugins.values()) {
+        for (Plugin plugin : plugins.values()) {
             Method hookMethod = plugin.getClass().getMethod(hook.name, hook.paramClasses);
             hookMethod.invoke(plugin, params);
         }
     }
 
-    private void updatePluginDbModelVersion(DeepaMehtaPlugin plugin, int dbModelVersion) {
+    private void updatePluginDbModelVersion(Plugin plugin, int dbModelVersion) {
         Map properties = new HashMap();
         properties.put("db_model_version", dbModelVersion);
         setTopicProperties(plugin.getPluginTopic().id, properties);

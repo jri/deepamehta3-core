@@ -1,9 +1,7 @@
-package de.deepamehta.core.plugin;
+package de.deepamehta.core.service;
 
 import de.deepamehta.core.model.Relation;
 import de.deepamehta.core.model.Topic;
-import de.deepamehta.core.service.DeepaMehtaService;
-import de.deepamehta.core.service.Migration;
 
 import com.sun.jersey.spi.container.servlet.ServletContainer;
 
@@ -28,21 +26,23 @@ import java.util.logging.Logger;
 import java.io.InputStream;
 import java.io.IOException;
 
+import java.net.URL;
+
 
 
 /**
  * Base class for plugin developers to derive their plugins from.
  */
-public class DeepaMehtaPlugin implements BundleActivator {
+public class Plugin implements BundleActivator {
 
-    private String     pluginId;
-    private String     pluginName;
-    private String     pluginClass;
-    private String     pluginPackage;
-    private Bundle     pluginBundle;
-    private Topic      pluginTopic;         // Represents this plugin in DB. Holds plugin DB version number.
-    private Properties pluginProperties;    // Read from plugin.properties
+    private String pluginId;
+    private String pluginName;
+    private String pluginClass;
+    private String pluginPackage;
+    private Bundle pluginBundle;
+    private Topic  pluginTopic;             // Represents this plugin in DB. Holds plugin DB version number.
 
+    private Properties configProperties;    // Read from plugin.properties
     private boolean isActivated;
 
     private ServiceTracker deepamehtaServiceTracker;
@@ -65,13 +65,20 @@ public class DeepaMehtaPlugin implements BundleActivator {
         return pluginTopic;
     }
 
-    public String getProperty(String key) {
-        return getProperty(key, null);
+    public String getConfigProperty(String key) {
+        return getConfigProperty(key, null);
     }
 
     public Migration getMigration(int migrationNr) throws ClassNotFoundException,
                                                           InstantiationException,
                                                           IllegalAccessException {
+        // Generic plugins (plugin bundles not containing a plugin subclass) who provide migrations must
+        // set the "pluginPackage" config property. Otherwise the migration class can't be located.
+        if (pluginPackage.equals("de.deepamehta.core.service")) {
+            throw new RuntimeException("Migration class can't be located because plugin package is unknown " +
+                "(there is neither a plugin subclass nor a \"pluginPackage\" config property)");
+        }
+        //
         String migrationClassName = pluginPackage + ".migrations.Migration" + migrationNr;
         return (Migration) pluginBundle.loadClass(migrationClassName).newInstance();
     }
@@ -99,11 +106,11 @@ public class DeepaMehtaPlugin implements BundleActivator {
             pluginId = pluginBundle.getSymbolicName();
             pluginName = (String) pluginBundle.getHeaders().get("Bundle-Name");
             pluginClass = (String) pluginBundle.getHeaders().get("Bundle-Activator");
-            pluginPackage = getClass().getPackage().getName();
             //
             logger.info("---------- Starting DeepaMehta plugin bundle \"" + pluginName + "\" ----------");
             //
-            pluginProperties = readProperties();
+            configProperties = readConfigFile();
+            pluginPackage = getConfigProperty("pluginPackage", getClass().getPackage().getName());
             //
             deepamehtaServiceTracker = createDeepamehtaServiceTracker(context);
             deepamehtaServiceTracker.open();
@@ -243,7 +250,7 @@ public class DeepaMehtaPlugin implements BundleActivator {
 
     private void registerRestResources() {
         try {
-            String namespace = getProperty("restResourcesNamespace");
+            String namespace = getConfigProperty("restResourcesNamespace");
             if (namespace != null) {
                 logger.info("Registering REST resources of plugin \"" + pluginName + "\" at namespace \"" +
                     namespace + "\"");
@@ -259,33 +266,37 @@ public class DeepaMehtaPlugin implements BundleActivator {
     }
 
     private void unregisterRestResources() {
-        String namespace = getProperty("restResourcesNamespace");
+        String namespace = getConfigProperty("restResourcesNamespace");
         if (namespace != null) {
             logger.info("Unregistering REST resources of plugin \"" + pluginName + "\"");
             httpService.unregister(namespace);
         }
     }
 
-    // ---
+    // --- Config Properties ---
 
-    private Properties readProperties() {
+    private Properties readConfigFile() {
         try {
             Properties properties = new Properties();
-            InputStream in = getClass().getResourceAsStream("/plugin.properties");
-            if (in != null) {
-                logger.info("Reading plugin properties from file /plugin.properties");
+            // We always use the bundle's classloader to access the config file.
+            // getClass().getResource() would fail for generic plugins (plugin bundles not containing a plugin
+            // subclass) because the DeepaMeta 3 Core classloader would be used and it has no access.
+            URL url = pluginBundle.getResource("/plugin.properties");
+            if (url != null) {
+                InputStream in = url.openStream();
+                logger.info("Reading plugin config file /plugin.properties");
                 properties.load(in);
             } else {
-                logger.info("No plugin properties file available - Using default plugin properties");
+                logger.info("No plugin config file available - Using default configuration");
             }
             return properties;
         } catch (IOException e) {
-            throw new RuntimeException("Plugin properties file can't be read", e);
+            throw new RuntimeException("Plugin config file can't be read", e);
         }
     }
 
-    private String getProperty(String key, String defaultValue) {
-        return pluginProperties.getProperty(key, defaultValue);
+    private String getConfigProperty(String key, String defaultValue) {
+        return configProperties.getProperty(key, defaultValue);
     }
 
     // ---
@@ -323,7 +334,7 @@ public class DeepaMehtaPlugin implements BundleActivator {
 
     private void runPluginMigrations() {
         int dbModelVersion = (Integer) pluginTopic.getProperty("db_model_version");
-        int requiredPluginDbVersion = Integer.parseInt(getProperty("requiredPluginDBVersion", "0"));
+        int requiredPluginDbVersion = Integer.parseInt(getConfigProperty("requiredPluginDBVersion", "0"));
         int migrationsToRun = requiredPluginDbVersion - dbModelVersion;
         logger.info("dbModelVersion=" + dbModelVersion + ", requiredPluginDbVersion=" + requiredPluginDbVersion +
             " => Running " + migrationsToRun + " plugin migrations");

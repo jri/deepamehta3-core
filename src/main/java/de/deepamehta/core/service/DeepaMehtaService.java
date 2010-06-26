@@ -5,7 +5,6 @@ import de.deepamehta.core.model.Topic;
 import de.deepamehta.core.model.TopicType;
 import de.deepamehta.core.model.RelatedTopic;
 import de.deepamehta.core.model.Relation;
-import de.deepamehta.core.plugin.DeepaMehtaPlugin;
 
 import java.util.Collection;
 import java.util.List;
@@ -99,15 +98,15 @@ public interface DeepaMehtaService {
 
     // --- Plugins ---
 
-    public void registerPlugin(String pluginId, DeepaMehtaPlugin plugin);
+    public void registerPlugin(String pluginId, Plugin plugin);
 
     public void unregisterPlugin(String pluginId);
 
     public Set<String> getPluginIds();
 
-    public DeepaMehtaPlugin getPlugin(String pluginId);
+    public Plugin getPlugin(String pluginId);
 
-    public void runPluginMigration(DeepaMehtaPlugin plugin, int migrationNr);
+    public void runPluginMigration(Plugin plugin, int migrationNr);
 
     // --- Misc ---
 
