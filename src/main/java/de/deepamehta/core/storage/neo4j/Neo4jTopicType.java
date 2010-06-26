@@ -25,7 +25,7 @@ import java.util.logging.Logger;
 
 
 /**
- * Extension of the topic type model that can read/write topic types from/to a Neo4j database.
+ * This class extends TopicType to provide persistence by the means of Neo4j.
  */
 class Neo4jTopicType extends TopicType {
 
@@ -70,27 +70,82 @@ class Neo4jTopicType extends TopicType {
 
     // ---
 
+    @Override
+    public Neo4jDataField getDataField(int index) {
+        return (Neo4jDataField) super.getDataField(index);
+    }
+
+    @Override
+    public Neo4jDataField getDataField(String id) {
+        return (Neo4jDataField) super.getDataField(id);
+    }
+
+    // ---
+
     /**
      * Adds a data field to this topic type and writes the data field to the database.
      */
     @Override
     public void addDataField(DataField dataField) {
+        // 1) update DB
         String typeId = (String) properties.get("type_id");
         // create data field
         Neo4jDataField field = new Neo4jDataField(dataField, storage);
         storage.getMetaClass(typeId).getDirectProperties().add(field.getMetaProperty());
         // put in sequence
-        Relationship rel;
-        Node fieldNode = field.getNode();
+        Node fieldNode = field.node;
         if (dataFields.size() == 0) {
-            rel = typeNode.createRelationshipTo(fieldNode, Neo4jStorage.RelType.SEQUENCE_START);
+            startFieldSequence(fieldNode);
         } else {
-            Neo4jDataField lastField = (Neo4jDataField) dataFields.get(dataFields.size() - 1);
-            rel = lastField.node.createRelationshipTo(fieldNode, Neo4jStorage.RelType.SEQUENCE);
+            addToFieldSequence(fieldNode, dataFields.size() - 1);
         }
-        rel.setProperty("topic_type_id", typeId);
-        //
+        // 2) update memory
         super.addDataField(field);
+    }
+
+    @Override
+    public void removeDataField(String id) {
+        Neo4jDataField field = getDataField(id);    // the data field to remove
+        int index = dataFields.indexOf(field);      // the index of the data field to remove
+        if (index == -1) {
+            throw new RuntimeException("List.indexOf() returned -1");
+        }
+        // 1) update DB
+        // repair sequence
+        if (index == 0) {
+            if (dataFields.size() > 1) {
+                // The data field to remove is the first one and further data fields exist.
+                // -> Make the next data field the new start data field.
+                Node nextFieldNode = getDataField(index + 1).node;
+                startFieldSequence(nextFieldNode);
+            }
+        } else {
+            if (index < dataFields.size() - 1) {
+                // The data field to remove is surrounded by other data fields.
+                // -> Make the surrounding data fields direct neighbours.
+                Node nextFieldNode = getDataField(index + 1).node;
+                addToFieldSequence(nextFieldNode, index - 1);
+            }
+        }
+        // delete the data field topic including all of its (sequence) relations
+        storage.deleteTopic(field.node.getId());
+        // 2) update memory
+        super.removeDataField(id);
+    }
+
+    // ---
+
+    private void startFieldSequence(Node fieldNode) {
+        Relationship rel = typeNode.createRelationshipTo(fieldNode, Neo4jStorage.RelType.SEQUENCE_START);
+        String typeId = (String) properties.get("type_id");
+        rel.setProperty("topic_type_id", typeId);
+    }
+
+    private void addToFieldSequence(Node fieldNode, int prevIndex) {
+        Node prevFieldNode = getDataField(prevIndex).node;
+        Relationship rel = prevFieldNode.createRelationshipTo(fieldNode, Neo4jStorage.RelType.SEQUENCE);
+        String typeId = (String) properties.get("type_id");
+        rel.setProperty("topic_type_id", typeId);
     }
 
     // ---

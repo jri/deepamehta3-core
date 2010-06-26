@@ -11,6 +11,15 @@ import java.util.Map;
 
 
 
+/**
+ * The model of a topic type. A topic type is basically an ordered collection of data fields.
+ * A topic type is itself a topic.
+ *
+ * @see DataField
+ * @see Topic
+ *
+ * @author <a href="mailto:jri@deepamehta.de">Jörg Richter</a>
+ */
 public class TopicType extends Topic {
 
     protected List<DataField> dataFields;
@@ -87,5 +96,16 @@ public class TopicType extends Topic {
 
     public void addDataField(DataField dataField) {
         dataFields.add(dataField);
+    }
+
+    public void removeDataField(String id) {
+        try {
+            boolean removed = dataFields.remove(getDataField(id));
+            if (!removed) {
+                throw new RuntimeException("List.remove() returned false");
+            }
+        } catch (Throwable e) {
+            throw new RuntimeException("Data field \"" + id + "\" can't be removed", e);
+        }
     }
 }

@@ -122,6 +122,11 @@ public class DataField {
     // ---
 
     @Override
+    public boolean equals(Object o) {
+        return ((DataField) o).id.equals(id);
+    }
+
+    @Override
     public String toString() {
         return "data field \"" + id + "\" (dataType=\"" + dataType + "\" relatedTypeId=\"" + relatedTypeId +
             "\" editor=\"" + editor + "\" indexingMode=\"" + indexingMode + "\")";

@@ -71,6 +71,8 @@ public interface Storage {
 
     public void updateDataField(String typeId, DataField dataField);
 
+    public void removeDataField(String typeId, String fieldId);
+
     // --- DB ---
 
     public Transaction beginTx();

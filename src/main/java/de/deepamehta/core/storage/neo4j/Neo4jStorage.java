@@ -267,6 +267,11 @@ public class Neo4jStorage implements Storage {
         typeCache.get(typeId).getDataField(dataField.id).update(dataField.getProperties());
     }
 
+    @Override
+    public void removeDataField(String typeId, String fieldId) {
+        typeCache.get(typeId).removeDataField(fieldId);
+    }
+
     // --- DB ---
 
     @Override
@@ -336,8 +341,13 @@ public class Neo4jStorage implements Storage {
         if (typeLabelField != null) {
             throw new RuntimeException("not yet implemented");
         } else {
-            String fieldId = topicType.getDataField(0).id;
-            label = node.getProperty(fieldId).toString();   // Note: property value can be a number as well
+            if (topicType.getDataFields().size() > 0) {
+                String fieldId = topicType.getDataField(0).id;
+                label = node.getProperty(fieldId).toString();   // Note: property value can be a number as well
+            } else {
+                // there are no properties -> the label can't be set
+                label = "?";
+            }
         }
         // Note: the properties remain uninitialzed here.
         // It is up to the plugins to provide selected properties (see providePropertiesHook()).

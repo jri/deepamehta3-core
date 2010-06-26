@@ -517,6 +517,24 @@ public class EmbeddedService implements DeepaMehtaService {
         }
     }
 
+    public void removeDataField(String typeId, String fieldId) {
+        RuntimeException ex = null;
+        Transaction tx = storage.beginTx();
+        try {
+            storage.removeDataField(typeId, fieldId);
+            tx.success();
+        } catch (Throwable e) {
+            logger.warning("ROLLBACK!");
+            ex = new RuntimeException("Data field \"" + fieldId + "\" of topic type \"" +
+                typeId + "\" can't be removed", e);
+        } finally {
+            tx.finish();
+            if (ex != null) {
+                throw ex;
+            }
+        }
+    }
+
     // --- Plugins ---
 
     @Override
