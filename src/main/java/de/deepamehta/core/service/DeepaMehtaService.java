@@ -25,7 +25,7 @@ public interface DeepaMehtaService {
 
     public Object getTopicProperty(long topicId, String key);
 
-    public List<Topic> getTopics(String typeId);
+    public List<Topic> getTopics(String typeUri);
 
     /**
      * Retrives topics and relationships that are directly connected to the given topic, optionally filtered
@@ -53,13 +53,13 @@ public interface DeepaMehtaService {
     /**
      * Performs a fulltext search.
      *
-     * @param   fieldId     The ID of the data field to search. If null is provided all fields are searched.
+     * @param   fieldUri    The URI of the data field to search. If null is provided all fields are searched.
      * @param   wholeWord   If true the searchTerm is regarded as whole word.
      *                      If false the searchTerm is regarded as begin-of-word substring.
      */
-    public Topic searchTopics(String searchTerm, String fieldId, boolean wholeWord, Map clientContext);
+    public Topic searchTopics(String searchTerm, String fieldUri, boolean wholeWord, Map clientContext);
 
-    public Topic createTopic(String typeId, Map properties, Map clientContext);
+    public Topic createTopic(String typeUri, Map properties, Map clientContext);
 
     public void setTopicProperties(long id, Map properties);
 
@@ -84,17 +84,17 @@ public interface DeepaMehtaService {
 
     // --- Types ---
 
-    public Set<String> getTopicTypeIds();
+    public Set<String> getTopicTypeUris();
 
-    public TopicType getTopicType(String typeId);
+    public TopicType getTopicType(String typeUri);
 
     public void createTopicType(Map properties, List dataFields);
 
-    public void addDataField(String typeId, DataField dataField);
+    public void addDataField(String typeUri, DataField dataField);
 
-    public void updateDataField(String typeId, DataField dataField);
+    public void updateDataField(String typeUri, DataField dataField);
 
-    public void removeDataField(String typeId, String fieldId);
+    public void removeDataField(String typeUri, String fieldUri);
 
     // --- Plugins ---
 

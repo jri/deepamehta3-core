@@ -25,23 +25,27 @@ import java.util.Map;
  */
 public class Topic {
 
+    // ---------------------------------------------------------------------------------------------- Instance Variables
+
     public long id;
-    public String typeId;
+    public String typeUri;
     public String label;
     public Map<String, Object> properties;
 
-    public Topic(long id, String typeId, String label, Map properties) {
+    // ---------------------------------------------------------------------------------------------------- Constructors
+
+    public Topic(long id, String typeUri, String label, Map properties) {
         this.id = id;
-        this.typeId = typeId;
+        this.typeUri = typeUri;
         this.label = label;
         this.properties = properties != null ? properties : new HashMap();
     }
 
     public Topic(Topic topic) {
-        this(topic.id, topic.typeId, topic.label, topic.properties);
+        this(topic.id, topic.typeUri, topic.label, topic.properties);
     }
 
-    // ---
+    // -------------------------------------------------------------------------------------------------- Public Methods
 
     public Object getProperty(String key) {
         Object value = properties.get(key);
@@ -67,7 +71,7 @@ public class Topic {
     public JSONObject toJSON() throws JSONException {
         JSONObject o = new JSONObject();
         o.put("id", id);
-        o.put("type_id", typeId);
+        o.put("type_uri", typeUri);
         o.put("label", label);
         o.put("properties", properties);
         return o;
@@ -75,6 +79,6 @@ public class Topic {
 
     @Override
     public String toString() {
-        return "topic " + id + " (typeId=\"" + typeId + "\", label=\"" + label + "\", properties=" + properties + ")";
+        return "topic " + id + " (typeUri=\"" + typeUri + "\", label=\"" + label + "\", properties=" + properties + ")";
     }
 }

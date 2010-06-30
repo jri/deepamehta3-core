@@ -153,12 +153,12 @@ public class EmbeddedService implements DeepaMehtaService {
     }
 
     @Override
-    public List<Topic> getTopics(String typeId) {
+    public List<Topic> getTopics(String typeUri) {
         List<Topic> topics = null;
         RuntimeException ex = null;
         Transaction tx = storage.beginTx();
         try {
-            topics = storage.getTopics(typeId);
+            topics = storage.getTopics(typeUri);
             //
             for (Topic topic : topics) {
                 triggerHook(Hook.PROVIDE_TOPIC_PROPERTIES, topic);
@@ -167,7 +167,7 @@ public class EmbeddedService implements DeepaMehtaService {
             tx.success();
         } catch (Throwable e) {
             logger.warning("ROLLBACK!");
-            ex = new RuntimeException("Topics of type \"" + typeId + "\" can't be retrieved", e);
+            ex = new RuntimeException("Topics of type \"" + typeUri + "\" can't be retrieved", e);
         } finally {
             tx.finish();
             if (ex == null) {
@@ -217,15 +217,16 @@ public class EmbeddedService implements DeepaMehtaService {
     }
 
     @Override
-    public Topic searchTopics(String searchTerm, String fieldId, boolean wholeWord, Map clientContext) {
+    public Topic searchTopics(String searchTerm, String fieldUri, boolean wholeWord, Map clientContext) {
         Topic resultTopic = null;
         Transaction tx = storage.beginTx();
         try {
-            List<Topic> searchResult = storage.searchTopics(searchTerm, fieldId, wholeWord);
+            List<Topic> searchResult = storage.searchTopics(searchTerm, fieldUri, wholeWord);
             // create result topic (a bucket)
             Map properties = new HashMap();
-            properties.put("Search Term", searchTerm);
-            resultTopic = createTopic("Search Result", properties, clientContext);
+            properties.put("http://www.deepamehta.de/core/property/SearchTerm", searchTerm);
+            resultTopic = createTopic("http://www.deepamehta.de/core/topictype/SearchResult",
+                properties, clientContext);
             // associate result topics
             logger.fine("Relating " + searchResult.size() + " result topics");
             for (Topic topic : searchResult) {
@@ -244,23 +245,23 @@ public class EmbeddedService implements DeepaMehtaService {
     }
 
     @Override
-    public Topic createTopic(String typeId, Map properties, Map clientContext) {
+    public Topic createTopic(String typeUri, Map properties, Map clientContext) {
         Topic topic = null;
         RuntimeException ex = null;
         Transaction tx = storage.beginTx();
         try {
-            Topic t = new Topic(-1, typeId, null, initProperties(properties, typeId));
+            Topic t = new Topic(-1, typeUri, null, initProperties(properties, typeUri));
             //
             triggerHook(Hook.PRE_CREATE, t, clientContext);
             //
-            topic = storage.createTopic(t.typeId, t.properties);
+            topic = storage.createTopic(t.typeUri, t.properties);
             //
             triggerHook(Hook.POST_CREATE, topic, clientContext);
             //
             tx.success();
         } catch (Throwable e) {
             logger.warning("ROLLBACK!");
-            ex = new RuntimeException("Topic of type \"" + typeId + "\" can't be created", e);
+            ex = new RuntimeException("Topic of type \"" + typeUri + "\" can't be created", e);
         } finally {
             tx.finish();
             if (ex == null) {
@@ -415,12 +416,12 @@ public class EmbeddedService implements DeepaMehtaService {
     // --- Types ---
 
     @Override
-    public Set<String> getTopicTypeIds() {
-        Set typeIds = null;
+    public Set<String> getTopicTypeUris() {
+        Set typeUris = null;
         RuntimeException ex = null;
         Transaction tx = storage.beginTx();
         try {
-            typeIds = storage.getTopicTypeIds();
+            typeUris = storage.getTopicTypeUris();
             tx.success();
         } catch (Throwable e) {
             logger.warning("ROLLBACK!");
@@ -428,7 +429,7 @@ public class EmbeddedService implements DeepaMehtaService {
         } finally {
             tx.finish();
             if (ex == null) {
-                return typeIds;
+                return typeUris;
             } else {
                 throw ex;
             }
@@ -436,16 +437,16 @@ public class EmbeddedService implements DeepaMehtaService {
     }
 
     @Override
-    public TopicType getTopicType(String typeId) {
+    public TopicType getTopicType(String typeUri) {
         TopicType topicType = null;
         RuntimeException ex = null;
         Transaction tx = storage.beginTx();
         try {
-            topicType = storage.getTopicType(typeId);
+            topicType = storage.getTopicType(typeUri);
             tx.success();
         } catch (Throwable e) {
             logger.warning("ROLLBACK!");
-            ex = new RuntimeException("Topic type \"" + typeId + "\" can't be retrieved", e);
+            ex = new RuntimeException("Topic type \"" + typeUri + "\" can't be retrieved", e);
         } finally {
             tx.finish();
             if (ex == null) {
@@ -470,7 +471,8 @@ public class EmbeddedService implements DeepaMehtaService {
             tx.success();
         } catch (Throwable e) {
             logger.warning("ROLLBACK!");
-            ex = new RuntimeException("Topic type \"" + properties.get("type_id") + "\" can't be created", e);
+            ex = new RuntimeException("Topic type \"" +
+                properties.get("http://www.deepamehta.de/core/property/TypeURI") + "\" can't be created", e);
         } finally {
             tx.finish();
             if (ex != null) {
@@ -480,16 +482,16 @@ public class EmbeddedService implements DeepaMehtaService {
     }
 
     @Override
-    public void addDataField(String typeId, DataField dataField) {
+    public void addDataField(String typeUri, DataField dataField) {
         RuntimeException ex = null;
         Transaction tx = storage.beginTx();
         try {
-            storage.addDataField(typeId, dataField);
+            storage.addDataField(typeUri, dataField);
             tx.success();
         } catch (Throwable e) {
             logger.warning("ROLLBACK!");
-            ex = new RuntimeException("Data field \"" + dataField.id + "\" can't be added to topic type \"" +
-                typeId + "\"", e);
+            ex = new RuntimeException("Data field \"" + dataField.uri + "\" can't be added to topic type \"" +
+                typeUri + "\"", e);
         } finally {
             tx.finish();
             if (ex != null) {
@@ -499,16 +501,16 @@ public class EmbeddedService implements DeepaMehtaService {
     }
 
     @Override
-    public void updateDataField(String typeId, DataField dataField) {
+    public void updateDataField(String typeUri, DataField dataField) {
         RuntimeException ex = null;
         Transaction tx = storage.beginTx();
         try {
-            storage.updateDataField(typeId, dataField);
+            storage.updateDataField(typeUri, dataField);
             tx.success();
         } catch (Throwable e) {
             logger.warning("ROLLBACK!");
-            ex = new RuntimeException("Data field \"" + dataField.id + "\" of topic type \"" +
-                typeId + "\" can't be updated", e);
+            ex = new RuntimeException("Data field \"" + dataField.uri + "\" of topic type \"" +
+                typeUri + "\" can't be updated", e);
         } finally {
             tx.finish();
             if (ex != null) {
@@ -517,16 +519,16 @@ public class EmbeddedService implements DeepaMehtaService {
         }
     }
 
-    public void removeDataField(String typeId, String fieldId) {
+    public void removeDataField(String typeUri, String fieldUri) {
         RuntimeException ex = null;
         Transaction tx = storage.beginTx();
         try {
-            storage.removeDataField(typeId, fieldId);
+            storage.removeDataField(typeUri, fieldUri);
             tx.success();
         } catch (Throwable e) {
             logger.warning("ROLLBACK!");
-            ex = new RuntimeException("Data field \"" + fieldId + "\" of topic type \"" +
-                typeId + "\" can't be removed", e);
+            ex = new RuntimeException("Data field \"" + fieldUri + "\" of topic type \"" +
+                typeUri + "\" can't be removed", e);
         } finally {
             tx.finish();
             if (ex != null) {
@@ -599,13 +601,13 @@ public class EmbeddedService implements DeepaMehtaService {
 
     // --- Topics ---
 
-    private Map initProperties(Map properties, String topicTypeId) {
+    private Map initProperties(Map properties, String typeUri) {
         if (properties == null) {
             properties = new HashMap();
         }
-        for (DataField dataField : getTopicType(topicTypeId).getDataFields()) {
-            if (!dataField.dataType.equals("relation") && properties.get(dataField.id) == null) {
-                properties.put(dataField.id, "");
+        for (DataField dataField : getTopicType(typeUri).getDataFields()) {
+            if (!dataField.dataType.equals("relation") && properties.get(dataField.uri) == null) {
+                properties.put(dataField.uri, "");
             }
         }
         return properties;
@@ -624,7 +626,7 @@ public class EmbeddedService implements DeepaMehtaService {
 
     private void updatePluginDbModelVersion(Plugin plugin, int dbModelVersion) {
         Map properties = new HashMap();
-        properties.put("db_model_version", dbModelVersion);
+        properties.put("http://www.deepamehta.de/core/property/DBModelVersion", dbModelVersion);
         setTopicProperties(plugin.getPluginTopic().id, properties);
     }
 

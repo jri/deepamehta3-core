@@ -11,11 +11,16 @@ import java.util.Map;
 
 public class DataField {
     
-    public String id;
+    // ---------------------------------------------------------------------------------------------- Instance Variables
+
+    public String uri;
     public String dataType;
-    public String relatedTypeId;    // used for dataType="relation" fields
+    public String relatedTypeUri;    // used for dataType="relation" fields
+    public String label;
     public String editor;
     public String indexingMode;
+
+    // ---------------------------------------------------------------------------------------------------- Constructors
 
     public DataField() {
         setDataType("text");
@@ -23,44 +28,59 @@ public class DataField {
         setIndexingMode("OFF");
     }
 
-    public DataField(String id) {
+    public DataField(String label) {
         this();
-        setId(id);
+        setLabel(label);
     }
 
     public DataField(Map properties) {
         update(properties);
     }
 
-    public DataField(JSONObject dataField) throws JSONException {
+    public DataField(JSONObject dataField) {
         this();
-        setId(dataField.getString("id"));
-        setDataType(dataField.getJSONObject("model").getString("type"));
-        if (dataType.equals("relation")) {
-            setRelatedTypeId(dataField.getJSONObject("model").getString("related_type_id"));
-        }
-        if (dataField.has("view")) {
-            setEditor(dataField.getJSONObject("view").getString("editor"));
-        }
-        if (dataField.has("indexing_mode")) {
-            setIndexingMode(dataField.getString("indexing_mode"));
+        try {
+            setUri(dataField.getString("uri"));
+            // parse "model"
+            if (dataField.has("model")) {
+                JSONObject model = dataField.getJSONObject("model");
+                if (model.has("type")) {
+                    setDataType(model.getString("type"));
+                }
+                if (dataType.equals("relation")) {
+                    setRelatedTypeUri(model.getString("related_type_uri"));
+                }
+            }
+            // parse "view"
+            JSONObject view = dataField.getJSONObject("view");
+            setLabel(view.getString("label"));
+            if (view.has("editor")) {
+                setEditor(view.getString("editor"));
+            }
+            // parse "indexing_mode"
+            if (dataField.has("indexing_mode")) {
+                setIndexingMode(dataField.getString("indexing_mode"));
+            }
+        } catch (Throwable e) {
+            throw new RuntimeException("Error while parsing data field \"" + uri + "\"", e);
         }
     }
 
-    // ---
+    // -------------------------------------------------------------------------------------------------- Public Methods
 
     public JSONObject toJSON() throws JSONException {
         JSONObject o = new JSONObject();
-        o.put("id", id);
+        o.put("uri", uri);
         //
         JSONObject model = new JSONObject();
         model.put("type", dataType);
         if (dataType.equals("relation")) {
-            model.put("related_type_id", relatedTypeId);
+            model.put("related_type_uri", relatedTypeUri);
         }
         o.put("model", model);
         //
         JSONObject view = new JSONObject();
+        view.put("label", label);
         view.put("editor", editor);
         o.put("view", view);
         //
@@ -70,28 +90,30 @@ public class DataField {
 
     public Map<String, String> getProperties() {
         Map<String, String> properties = new HashMap();
-        properties.put("id", id);
+        properties.put("uri", uri);
         properties.put("data_type", dataType);
         if (dataType.equals("relation")) {
-            properties.put("related_type_id", relatedTypeId);
+            properties.put("related_type_uri", relatedTypeUri);
         }
+        properties.put("label", label);
         properties.put("editor", editor);
         properties.put("indexing_mode", indexingMode);
         return properties;
     }
 
     public void update(Map<String, String> properties) {
-        setId(properties.get("id"));
+        setUri(properties.get("uri"));
         setDataType(properties.get("data_type"));
-        setRelatedTypeId(properties.get("related_type_id"));
+        setRelatedTypeUri(properties.get("related_type_uri"));
+        setLabel(properties.get("label"));
         setEditor(properties.get("editor"));
         setIndexingMode(properties.get("indexing_mode"));
     }
 
     // ---
 
-    public DataField setId(String id) {
-        this.id = id;
+    public DataField setUri(String uri) {
+        this.uri = uri;
         return this;
     }
 
@@ -102,8 +124,13 @@ public class DataField {
     }
 
     // used for dataType="relation" fields
-    public DataField setRelatedTypeId(String relatedTypeId) {
-        this.relatedTypeId = relatedTypeId;
+    public DataField setRelatedTypeUri(String relatedTypeUri) {
+        this.relatedTypeUri = relatedTypeUri;
+        return this;
+    }
+
+    public DataField setLabel(String label) {
+        this.label = label;
         return this;
     }
 
@@ -123,12 +150,12 @@ public class DataField {
 
     @Override
     public boolean equals(Object o) {
-        return ((DataField) o).id.equals(id);
+        return ((DataField) o).uri.equals(uri);
     }
 
     @Override
     public String toString() {
-        return "data field \"" + id + "\" (dataType=\"" + dataType + "\" relatedTypeId=\"" + relatedTypeId +
-            "\" editor=\"" + editor + "\" indexingMode=\"" + indexingMode + "\")";
+        return "data field \"" + label + "\" (uri=\"" + uri + "\" dataType=\"" + dataType + "\" relatedTypeUri=\"" +
+            relatedTypeUri + "\" editor=\"" + editor + "\" indexingMode=\"" + indexingMode + "\")";
     }
 }

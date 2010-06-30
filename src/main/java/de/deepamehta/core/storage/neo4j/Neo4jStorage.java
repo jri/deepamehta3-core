@@ -7,6 +7,7 @@ import de.deepamehta.core.model.RelatedTopic;
 import de.deepamehta.core.model.Relation;
 import de.deepamehta.core.storage.Storage;
 
+import org.neo4j.commons.Predicate;
 import org.neo4j.graphdb.Direction;
 import org.neo4j.graphdb.DynamicRelationshipType;
 import org.neo4j.graphdb.GraphDatabaseService;
@@ -16,7 +17,6 @@ import org.neo4j.graphdb.Relationship;
 import org.neo4j.graphdb.RelationshipType;
 import org.neo4j.graphdb.traversal.Position;
 import org.neo4j.graphdb.traversal.PruneEvaluator;
-import org.neo4j.graphdb.traversal.ReturnFilter;
 import org.neo4j.graphdb.traversal.TraversalDescription;
 import org.neo4j.graphdb.traversal.Traverser;
 import org.neo4j.kernel.EmbeddedGraphDatabase;
@@ -82,7 +82,7 @@ public class Neo4jStorage implements Storage {
     public Topic getTopic(long id) {
         logger.info("Getting node " + id);
         Node node = graphDb.getNodeById(id);
-        return new Topic(id, getTypeId(node), null, getProperties(node));   // FIXME: label remains uninitialized
+        return new Topic(id, getTypeUri(node), null, getProperties(node));   // FIXME: label remains uninitialized
     }
 
     @Override
@@ -99,9 +99,9 @@ public class Neo4jStorage implements Storage {
     }
 
     @Override
-    public List<Topic> getTopics(String typeId) {
+    public List<Topic> getTopics(String typeUri) {
         List topics = new ArrayList();
-        for (Node node : getMetaClass(typeId).getDirectInstances()) {
+        for (Node node : getMetaClass(typeUri).getDirectInstances()) {
             topics.add(buildTopic(node));
         }
         return topics;
@@ -133,11 +133,11 @@ public class Neo4jStorage implements Storage {
     }
 
     @Override
-    public List<Topic> searchTopics(String searchTerm, String fieldId, boolean wholeWord) {
-        if (fieldId == null) fieldId = "default";
+    public List<Topic> searchTopics(String searchTerm, String fieldUri, boolean wholeWord) {
+        if (fieldUri == null) fieldUri = "default";
         if (!wholeWord) searchTerm += "*";
-        IndexHits<Node> hits = fulltextIndex.getNodes(fieldId, searchTerm);
-        logger.info("Searching \"" + searchTerm + "\" in field \"" + fieldId + "\" => " + hits.size() + " nodes");
+        IndexHits<Node> hits = fulltextIndex.getNodes(fieldUri, searchTerm);
+        logger.info("Searching \"" + searchTerm + "\" in field \"" + fieldUri + "\" => " + hits.size() + " nodes");
         List result = new ArrayList();
         for (Node node : hits) {
             logger.fine("Adding node " + node.getId());
@@ -145,7 +145,7 @@ public class Neo4jStorage implements Storage {
             //
             // TODO: drop this filter. Items not intended for being find should not be indexed at all. Model change
             // required: the indexing mode must be specified per topic type/data field pair instead per data field.
-            if (!getTypeId(node).equals("Search Result")) {
+            if (!getTypeUri(node).equals("http://www.deepamehta.de/core/topictype/SearchResult")) {
                 // FIXME: type, label, and properties remain uninitialized
                 result.add(new Topic(node.getId(), null, null, null));
             }
@@ -155,13 +155,13 @@ public class Neo4jStorage implements Storage {
     }
 
     @Override
-    public Topic createTopic(String typeId, Map properties) {
+    public Topic createTopic(String typeUri, Map properties) {
         Node node = graphDb.createNode();
         logger.info("Creating node => ID=" + node.getId());
-        // setNodeType(node, typeId);
-        getMetaClass(typeId).getDirectInstances().add(node);
-        setProperties(node, properties, typeId);
-        return new Topic(node.getId(), typeId, null, properties);  // FIXME: label remains uninitialized
+        // setNodeType(node, typeUri);
+        getMetaClass(typeUri).getDirectInstances().add(node);
+        setProperties(node, properties, typeUri);
+        return new Topic(node.getId(), typeUri, null, properties);  // FIXME: label remains uninitialized
     }
 
     @Override
@@ -239,17 +239,17 @@ public class Neo4jStorage implements Storage {
     // --- Types ---
 
     @Override
-    public Set<String> getTopicTypeIds() {
-        Set typeIds = new HashSet();
+    public Set<String> getTopicTypeUris() {
+        Set typeUris = new HashSet();
         for (MetaModelClass metaClass : getAllMetaClasses()) {
-            typeIds.add(metaClass.getName());
+            typeUris.add(metaClass.getName());
         }
-        return typeIds;
+        return typeUris;
     }
 
     @Override
-    public TopicType getTopicType(String typeId) {
-        return typeCache.get(typeId);
+    public TopicType getTopicType(String typeUri) {
+        return typeCache.get(typeUri);
     }
 
     @Override
@@ -258,18 +258,18 @@ public class Neo4jStorage implements Storage {
     }
 
     @Override
-    public void addDataField(String typeId, DataField dataField) {
-        typeCache.get(typeId).addDataField(dataField);
+    public void addDataField(String typeUri, DataField dataField) {
+        getTopicType(typeUri).addDataField(dataField);
     }
 
     @Override
-    public void updateDataField(String typeId, DataField dataField) {
-        typeCache.get(typeId).getDataField(dataField.id).update(dataField.getProperties());
+    public void updateDataField(String typeUri, DataField dataField) {
+        getTopicType(typeUri).getDataField(dataField.uri).update(dataField.getProperties());
     }
 
     @Override
-    public void removeDataField(String typeId, String fieldId) {
-        typeCache.get(typeId).removeDataField(fieldId);
+    public void removeDataField(String typeUri, String fieldUri) {
+        getTopicType(typeUri).removeDataField(fieldUri);
     }
 
     // --- DB ---
@@ -332,18 +332,18 @@ public class Neo4jStorage implements Storage {
     // --- Topics ---
 
     private Topic buildTopic(Node node) {
-        // initialize type
-        String typeId = getTypeId(node);
-        // initialize label
+        // 1) calculate type
+        String typeUri = getTypeUri(node);
+        // 2) calculate label
         String label;
-        TopicType topicType = typeCache.get(typeId);
+        TopicType topicType = getTopicType(typeUri);
         String typeLabelField = (String) topicType.getProperty("label_field", null);
         if (typeLabelField != null) {
             throw new RuntimeException("not yet implemented");
         } else {
             if (topicType.getDataFields().size() > 0) {
-                String fieldId = topicType.getDataField(0).id;
-                label = node.getProperty(fieldId).toString();   // Note: property value can be a number as well
+                String fieldUri = topicType.getDataField(0).uri;
+                label = node.getProperty(fieldUri).toString();   // Note: property value can be a number as well
             } else {
                 // there are no properties -> the label can't be set
                 label = "?";
@@ -351,7 +351,7 @@ public class Neo4jStorage implements Storage {
         }
         // Note: the properties remain uninitialzed here.
         // It is up to the plugins to provide selected properties (see providePropertiesHook()).
-        return new Topic(node.getId(), typeId, label, null);
+        return new Topic(node.getId(), typeUri, label, null);
     }
 
     // --- Relations ---
@@ -378,14 +378,14 @@ public class Neo4jStorage implements Storage {
     }
 
     private void setProperties(PropertyContainer container, Map<String, Object> properties) {
-        String typeId = null;
+        String typeUri = null;
         if (container instanceof Node) {
-            typeId = getTypeId((Node) container);
+            typeUri = getTypeUri((Node) container);
         }
-        setProperties(container, properties, typeId);
+        setProperties(container, properties, typeUri);
     }
 
-    private void setProperties(PropertyContainer container, Map<String, Object> properties, String typeId) {
+    private void setProperties(PropertyContainer container, Map<String, Object> properties, String typeUri) {
         if (properties == null) {
             throw new NullPointerException("setProperties() called with properties=null");
         }
@@ -397,15 +397,15 @@ public class Neo4jStorage implements Storage {
             if (container instanceof Node) {
                 // Note: we only index node properties.
                 // Neo4j can't index relationship properties.
-                indexProperty((Node) container, key, value, typeId);
+                indexProperty((Node) container, key, value, typeUri);
             }
         }
     }
 
-    private void indexProperty(Node node, String key, Object value, String typeId) {
-        // Note: we only index instance nodes. Meta nodes (types and fields) are responsible for indexing themself.
-        if (!typeId.equals("Topic Type") && !typeId.equals("Data Field")) {
-            DataField dataField = typeCache.get(typeId).getDataField(key);
+    private void indexProperty(Node node, String key, Object value, String typeUri) {
+        // Note: we only index instance nodes. Meta nodes (types) are responsible for indexing themself.
+        if (!typeUri.equals("http://www.deepamehta.de/core/topictype/TopicType")) {
+            DataField dataField = getTopicType(typeUri).getDataField(key);
             String indexingMode = dataField.indexingMode;
             if (indexingMode.equals("OFF")) {
                 return;
@@ -417,32 +417,30 @@ public class Neo4jStorage implements Storage {
                 fulltextIndex.index(node, key, value);
             } else {
                 throw new RuntimeException("Data field \"" + key + "\" of type definition \"" +
-                    typeId + "\" has unexpectd indexing mode: \"" + indexingMode + "\"");
+                    typeUri + "\" has unexpectd indexing mode: \"" + indexingMode + "\"");
             }
         }
     }
 
     // --- Types ---
 
-    private String getTypeId(Node node) {
+    private String getTypeUri(Node node) {
         // FIXME: meta-types must be detected manually
-        if (node.getProperty("type_id", null) != null) {
+        if (node.getProperty("http://www.deepamehta.de/core/property/TypeURI", null) != null) {
             // FIXME: a more elaborated criteria is required, e.g. an incoming TOPIC_TYPE relation
-            return "Topic Type";
-        // FIXME: drop "Data Field" detection?
-        /* } else if (node.getProperty("data_type", null) != null) {
-            // FIXME: a more elaborated criteria is required, e.g. an incoming DATA_FIELD relation
-            return "Data Field"; */
+            return "http://www.deepamehta.de/core/topictype/TopicType";
         }
-        return (String) getTypeNode(node).getProperty("type_id");
+        return (String) getTypeNode(node).getProperty("http://www.deepamehta.de/core/property/TypeURI");
     }
 
     private Node getTypeNode(Node node) {
-        TraversalDescription desc = TraversalFactory.createTraversalDescription();
-        desc = desc.relationships(MetaModelRelTypes.META_HAS_INSTANCE, Direction.INCOMING);
-        desc = desc.filter(ReturnFilter.ALL_BUT_START_NODE);
+        // TraversalDescription desc = TraversalFactory.createTraversalDescription();
+        // desc = desc.relationships(MetaModelRelTypes.META_HAS_INSTANCE, Direction.INCOMING);
+        // desc = desc.filter(ReturnFilter.ALL_BUT_START_NODE);
+        // Iterator<Node> i = desc.traverse(node).nodes().iterator();
         //
-        Iterator<Node> i = desc.traverse(node).nodes().iterator();
+        Iterator<Node> i = node.expand(MetaModelRelTypes.META_HAS_INSTANCE, Direction.INCOMING).nodes().iterator();
+        //
         // error check 1
         if (!i.hasNext()) {
             throw new RuntimeException("Type of " + node + " is unknown " +
@@ -480,10 +478,10 @@ public class Neo4jStorage implements Storage {
 
     // --- Meta Model ---
 
-    MetaModelClass getMetaClass(String typeId) {
-        MetaModelClass metaClass = namespace.getMetaClass(typeId, false);
+    MetaModelClass getMetaClass(String typeUri) {
+        MetaModelClass metaClass = namespace.getMetaClass(typeUri, false);
         if (metaClass == null) {
-            throw new RuntimeException("Topic type \"" + typeId + "\" is unknown");
+            throw new RuntimeException("Topic type \"" + typeUri + "\" is unknown");
         }
         return metaClass;
     }
@@ -492,12 +490,12 @@ public class Neo4jStorage implements Storage {
         return namespace.getMetaClasses();
     }
 
-    MetaModelClass createMetaClass(String typeId) {
-        return namespace.getMetaClass(typeId, true);
+    MetaModelClass createMetaClass(String typeUri) {
+        return namespace.getMetaClass(typeUri, true);
     }
 
-    MetaModelProperty createMetaProperty(String dataFieldId) {
-        return namespace.getMetaProperty(dataFieldId, true);
+    MetaModelProperty createMetaProperty(String fieldUri) {
+        return namespace.getMetaProperty(fieldUri, true);
     }
 
     // --- Traversal ---
@@ -511,7 +509,7 @@ public class Neo4jStorage implements Storage {
         return desc;
     }
 
-    private class RelatedTopicsFilter implements ReturnFilter {
+    private class RelatedTopicsFilter implements Predicate {
 
         private List<String> includeTopicTypes;
         private Map<String, Direction> includeRelTypes;
@@ -527,12 +525,13 @@ public class Neo4jStorage implements Storage {
         }
 
         @Override
-        public boolean shouldReturn(Position position) {
+        public boolean accept(Object item) {
+            Position position = (Position) item;
             if (position.atStartNode()) {
                 return false;
             }
             // Note: we must apply the relation type filter first in order to sort out the meta-model's namespace and
-            // property nodes before the topic type filter would see them (getTypeId() would fail on these nodes).
+            // property nodes before the topic type filter would see them (getTypeUri() would fail on these nodes).
             Node node = position.node();
             // 1) apply relation type filter
             Relationship rel = position.lastRelationship();
@@ -551,7 +550,7 @@ public class Neo4jStorage implements Storage {
                 }
             }
             // 2) apply topic type filter
-            if (!includeTopicTypes.isEmpty() && !includeTopicTypes.contains(getTypeId(node))) {
+            if (!includeTopicTypes.isEmpty() && !includeTopicTypes.contains(getTypeUri(node))) {
                 return false;
             }
             //

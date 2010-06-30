@@ -1,43 +1,78 @@
 [
     {
-        type_id: "Note",
+        uri: "http://www.deepamehta.de/core/topictype/Note",
         fields: [
-            {id: "Title", model: {type: "text"}, view: {editor: "single line"}, indexing_mode: "FULLTEXT"},
-            {id: "Text",  model: {type: "html"}, view: {editor: "multi line"},  indexing_mode: "FULLTEXT"}
+            {
+                uri: "http://www.deepamehta.de/core/property/Title",
+                model: {type: "text"},
+                view: {label: "Title"},
+                indexing_mode: "FULLTEXT"
+            },
+            {
+                uri: "http://www.deepamehta.de/core/property/Text",
+                model: {type: "html"},
+                view: {label: "Text", editor: "multi line"},
+                indexing_mode: "FULLTEXT"
+            }
         ],
-        view: {
-            icon_src: "images/pencil.png"
-        },
+        view: {label: "Note", icon_src: "images/pencil.png"},
         implementation: "PlainDocument"
     },
     {
-        type_id: "Search Result",
+        uri: "http://www.deepamehta.de/core/topictype/SearchResult",
         fields: [
-            {id: "Search Term", model: {type: "text"}, view: {editor: "single line"}}
+            {
+                uri: "http://www.deepamehta.de/core/property/SearchTerm",
+                model: {type: "text"},
+                view: {label: "Search Term"}
+            }
         ],
-        view: {
-            icon_src: "images/bucket.png"
-        },
+        view: {label: "Search Result", icon_src: "images/bucket.png"},
         implementation: "PlainDocument"
     },
     {
-    	type_id: "Topic Type",
+        uri: "http://www.deepamehta.de/core/topictype/TopicType",
         fields: [
-            {id: "type_id", model: {type: "text"}, view: {editor: "single line", label: "Type ID"}},
-            {id: "Icon",    model: {type: "relation", related_type_id: "Icon"}, view: {editor: "iconpicker"}},
-            {id: "Fields",  model: {type: "field-definition"}}
+            {
+                uri: "http://www.deepamehta.de/core/property/TypeName",
+                model: {type: "text"},
+                view: {label: "Type Name"}
+            },
+            {
+                uri: "http://www.deepamehta.de/core/property/TypeURI",
+                model: {type: "text"},
+                view: {label: "Type URI"}
+            },
+            {
+                uri: "http://www.deepamehta.de/core/property/Icon",
+                model: {type: "relation", related_type_uri: "http://www.deepamehta.de/core/topictype/Icon"},
+                view: {label: "Icon", editor: "iconpicker"}
+            },
+            {
+                uri: "http://www.deepamehta.de/core/property/DataFields",
+                model: {type: "field-definition"},
+                view: {label: "Data Fields"}
+            }
         ],
-        view: {
-            icon_src: "images/drawer.png"
-        },
+        view: {label: "Topic Type", icon_src: "images/drawer.png"},
         implementation: "PlainDocument"
     },
-	{
-		type_id: "Plugin",
+    {
+        uri: "http://www.deepamehta.de/core/topictype/Plugin",
         fields: [
-            {id: "plugin_id", model: {type: "text"}, view: {editor: "single line", label: "Plugin ID"}, indexing_mode: "KEY"},
-            {id: "db_model_version", model: {type: "number"}, view: {editor: "single line", label: "DB Model Version"}}
+            {
+                uri: "http://www.deepamehta.de/core/property/PluginID",
+                model: {type: "text"},
+                view: {label: "Plugin ID"},
+                indexing_mode: "KEY"
+            },
+            {
+                uri: "http://www.deepamehta.de/core/property/DBModelVersion",
+                model: {type: "number"},
+                view: {label: "DB Model Version"}
+            }
         ],
+        view: {label: "Plugin"},
         implementation: "PlainDocument"
     }
 ]

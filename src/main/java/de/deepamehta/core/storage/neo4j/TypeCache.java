@@ -23,24 +23,24 @@ public class TypeCache {
 
     // ---
 
-    public TopicType get(String typeId) {
-        TopicType topicType = topicTypes.get(typeId);
+    public TopicType get(String typeUri) {
+        TopicType topicType = topicTypes.get(typeUri);
         if (topicType == null) {
-            logger.info("Loading topic type \"" + typeId + "\" into type cache");
-            topicType = new Neo4jTopicType(typeId, storage);
+            logger.info("Loading topic type \"" + typeUri + "\" into type cache");
+            topicType = new Neo4jTopicType(typeUri, storage);
             put(topicType);
         }
         return topicType;
     }
 
     public void put(TopicType topicType) {
-        String typeId = (String) topicType.getProperty("type_id");
-        topicTypes.put(typeId, topicType);
+        String typeUri = (String) topicType.getProperty("http://www.deepamehta.de/core/property/TypeURI");
+        topicTypes.put(typeUri, topicType);
     }
 
-    /* public void invalidate(String typeId) {
-        if (topicTypes.remove(typeId) != null) {
-            logger.info("Removing topic type \"" + typeId + "\" from type cache");
+    /* public void invalidate(String typeUri) {
+        if (topicTypes.remove(typeUri) != null) {
+            logger.info("Removing topic type \"" + typeUri + "\" from type cache");
         }
     } */
 }

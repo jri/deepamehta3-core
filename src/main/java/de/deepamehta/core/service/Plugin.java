@@ -308,14 +308,15 @@ public class Plugin implements BundleActivator {
         } else {
             logger.info("Creating topic for plugin \"" + pluginName + "\"");
             Map properties = new HashMap();
-            properties.put("plugin_id", pluginId);
-            properties.put("db_model_version", 0);
-            pluginTopic = dms.createTopic("Plugin", properties, null);     // FIXME: clientContext=null
+            properties.put("http://www.deepamehta.de/core/property/PluginID", pluginId);
+            properties.put("http://www.deepamehta.de/core/property/DBModelVersion", 0);
+            // FIXME: clientContext=null
+            pluginTopic = dms.createTopic("http://www.deepamehta.de/core/topictype/Plugin", properties, null);
         }
     }
 
     private Topic findPluginTopic() {
-        return dms.getTopic("plugin_id", pluginId);
+        return dms.getTopic("http://www.deepamehta.de/core/property/PluginID", pluginId);
     }
 
     // ---
@@ -333,7 +334,7 @@ public class Plugin implements BundleActivator {
     }
 
     private void runPluginMigrations() {
-        int dbModelVersion = (Integer) pluginTopic.getProperty("db_model_version");
+        int dbModelVersion = (Integer) pluginTopic.getProperty("http://www.deepamehta.de/core/property/DBModelVersion");
         int requiredPluginDbVersion = Integer.parseInt(getConfigProperty("requiredPluginDBVersion", "0"));
         int migrationsToRun = requiredPluginDbVersion - dbModelVersion;
         logger.info("dbModelVersion=" + dbModelVersion + ", requiredPluginDbVersion=" + requiredPluginDbVersion +

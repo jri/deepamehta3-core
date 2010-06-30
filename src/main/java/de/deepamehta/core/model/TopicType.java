@@ -22,41 +22,51 @@ import java.util.Map;
  */
 public class TopicType extends Topic {
 
+    // ---------------------------------------------------------------------------------------------- Instance Variables
+
     protected List<DataField> dataFields;
 
-    // ---
+    // ---------------------------------------------------------------------------------------------------- Constructors
 
     public TopicType(Map properties, List dataFields) {
-        super(-1, "Topic Type", null, properties);      // id and label remain uninitialized
+        // id and label remain uninitialized
+        super(-1, "http://www.deepamehta.de/core/topictype/TopicType", null, properties);
         this.dataFields = dataFields;
     }
 
-    public TopicType(JSONObject type) throws JSONException {
-        super(-1, "Topic Type", null, new HashMap());   // id and label remain uninitialized
-        // initialize properties
-        setProperty("type_id", type.getString("type_id"));
-        if (type.has("view")) {
+    public TopicType(JSONObject type) {
+        // id, label, and properties remain uninitialized
+        super(-1, "http://www.deepamehta.de/core/topictype/TopicType", null, null);
+        try {
+            // initialize properties
+            setProperty("http://www.deepamehta.de/core/property/TypeURI", type.getString("uri"));
             JSONObject view = type.getJSONObject("view");
-            setProperty("icon_src", view.getString("icon_src"));
+            setProperty("http://www.deepamehta.de/core/property/TypeName", view.getString("label"));
+            if (view.has("icon_src")) {
+                setProperty("icon_src", view.getString("icon_src"));
+            }
             if (view.has("label_field")) {
                 setProperty("label_field", view.getString("label_field"));
             }
-        }
-        setProperty("implementation", type.getString("implementation"));
-        // initialize data fields
-        dataFields = new ArrayList();
-        JSONArray fieldDefs = type.getJSONArray("fields");
-        for (int i = 0; i < fieldDefs.length(); i++) {
-            addDataField(new DataField(fieldDefs.getJSONObject(i)));
+            setProperty("implementation", type.getString("implementation"));
+            // initialize data fields
+            dataFields = new ArrayList();
+            JSONArray fieldDefs = type.getJSONArray("fields");
+            for (int i = 0; i < fieldDefs.length(); i++) {
+                addDataField(new DataField(fieldDefs.getJSONObject(i)));
+            }
+        } catch (Throwable e) {
+            throw new RuntimeException("Error while parsing topic type \"" +
+                getProperty("http://www.deepamehta.de/core/property/TypeURI") + "\"", e);
         }
     }
 
-    // ---
+    // -------------------------------------------------------------------------------------------------- Public Methods
 
     @Override
     public JSONObject toJSON() throws JSONException {
         JSONObject o = new JSONObject();
-        o.put("type_id", getProperty("type_id"));
+        o.put("uri", getProperty("http://www.deepamehta.de/core/property/TypeURI"));
         //
         JSONArray fields = new JSONArray();
         for (DataField dataField : dataFields) {
@@ -65,6 +75,7 @@ public class TopicType extends Topic {
         o.put("fields", fields);
         //
         JSONObject view = new JSONObject();
+        view.put("label", getProperty("http://www.deepamehta.de/core/property/TypeName", null));
         view.put("icon_src", getProperty("icon_src", null));
         view.put("label_field", getProperty("label_field", null));
         o.put("view", view);
@@ -83,13 +94,14 @@ public class TopicType extends Topic {
         return dataFields.get(index);
     }
 
-    public DataField getDataField(String id) {
+    public DataField getDataField(String uri) {
         for (DataField dataField : dataFields) {
-            if (dataField.id.equals(id)) {
+            if (dataField.uri.equals(uri)) {
                 return dataField;
             }
         }
-        throw new RuntimeException("Topic type \"" + getProperty("type_id") + "\" has no data field \"" + id + "\"");
+        throw new RuntimeException("Topic type \"" + getProperty("http://www.deepamehta.de/core/property/TypeName") +
+            "\" has no data field \"" + uri + "\"");
     }
 
     // ---
@@ -98,14 +110,14 @@ public class TopicType extends Topic {
         dataFields.add(dataField);
     }
 
-    public void removeDataField(String id) {
+    public void removeDataField(String uri) {
         try {
-            boolean removed = dataFields.remove(getDataField(id));
+            boolean removed = dataFields.remove(getDataField(uri));
             if (!removed) {
                 throw new RuntimeException("List.remove() returned false");
             }
         } catch (Throwable e) {
-            throw new RuntimeException("Data field \"" + id + "\" can't be removed", e);
+            throw new RuntimeException("Data field \"" + uri + "\" can't be removed", e);
         }
     }
 }

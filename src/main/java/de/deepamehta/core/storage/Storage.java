@@ -25,15 +25,15 @@ public interface Storage {
 
     public Object getTopicProperty(long topicId, String key);
 
-    public List<Topic> getTopics(String typeId);
+    public List<Topic> getTopics(String typeUri);
 
     public List<RelatedTopic> getRelatedTopics(long topicId, List<String> includeTopicTypes,
                                                              List<String> includeRelTypes,
                                                              List<String> excludeRelTypes);
 
-    public List<Topic> searchTopics(String searchTerm, String fieldId, boolean wholeWord);
+    public List<Topic> searchTopics(String searchTerm, String fieldUri, boolean wholeWord);
 
-    public Topic createTopic(String typeId, Map properties);
+    public Topic createTopic(String typeUri, Map properties);
 
     public void setTopicProperties(long id, Map properties);
 
@@ -61,17 +61,17 @@ public interface Storage {
 
     // --- Types ---
 
-    public Set<String> getTopicTypeIds();
+    public Set<String> getTopicTypeUris();
 
-    public TopicType getTopicType(String typeId);
+    public TopicType getTopicType(String typeUri);
 
     public void createTopicType(Map<String, Object> properties, List<DataField> dataFields);
 
-    public void addDataField(String typeId, DataField dataField);
+    public void addDataField(String typeUri, DataField dataField);
 
-    public void updateDataField(String typeId, DataField dataField);
+    public void updateDataField(String typeUri, DataField dataField);
 
-    public void removeDataField(String typeId, String fieldId);
+    public void removeDataField(String typeUri, String fieldUri);
 
     // --- DB ---
 
