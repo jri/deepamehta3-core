@@ -21,8 +21,22 @@ public interface Storage {
 
     public Topic getTopic(long id);
 
+    /**
+     * Looks up a topic by exact property value.
+     * If no such topic exists <code>null</code> is returned.
+     * If more than one topic is found a runtime exception is thrown.
+     * <br><br>
+     * IMPORTANT: Looking up a topic this way requires the property to be indexed with indexing mode <code>KEY</code>.
+     * This is achieved by declaring the respective data field with <code>indexing_mode: "KEY"</code>
+     * (for statically declared data field, typically in <code>types.json</code>) or
+     * by calling DataField's {@link DataField#setIndexingMode} method with <code>"KEY"</code> as argument
+     * (for dynamically created data fields, typically in migration classes).
+     */
     public Topic getTopic(String key, Object value);
 
+    /**
+     * Returns a property value of a topic, or <code>null</code> if the topic doesn't have such a property.
+     */
     public Object getTopicProperty(long topicId, String key);
 
     public List<Topic> getTopics(String typeUri);

@@ -48,7 +48,8 @@ class Neo4jTopicType extends TopicType {
         String typeUri = (String) properties.get("http://www.deepamehta.de/core/property/TypeURI");
         MetaModelClass metaClass = storage.createMetaClass(typeUri);
         this.typeNode = metaClass.node();
-        logger.info("Creating topic type \"" + typeUri + "\" => ID=" + typeNode.getId());
+        this.id = typeNode.getId();
+        logger.info("Creating topic type \"" + typeUri + "\" => ID=" + id);
         // set properties
         for (String key : properties.keySet()) {
             typeNode.setProperty(key, properties.get(key));
@@ -68,6 +69,7 @@ class Neo4jTopicType extends TopicType {
         this.typeNode = getTypeNode(typeUri);
         this.properties = storage.getProperties(typeNode);
         this.dataFields = readDataFields();
+        this.id = typeNode.getId();
     }
 
     // -------------------------------------------------------------------------------------------------- Public Methods

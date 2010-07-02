@@ -254,7 +254,7 @@ public class EmbeddedService implements DeepaMehtaService {
             //
             triggerHook(Hook.PRE_CREATE, t, clientContext);
             //
-            topic = storage.createTopic(t.typeUri, t.properties);
+            topic = storage.createTopic(t.typeUri, t.getProperties());
             //
             triggerHook(Hook.POST_CREATE, topic, clientContext);
             //
@@ -425,7 +425,7 @@ public class EmbeddedService implements DeepaMehtaService {
             tx.success();
         } catch (Throwable e) {
             logger.warning("ROLLBACK!");
-            ex = new RuntimeException("Topic type IDs can't be retrieved", e);
+            ex = new RuntimeException("Topic type URIs can't be retrieved", e);
         } finally {
             tx.finish();
             if (ex == null) {
@@ -601,6 +601,9 @@ public class EmbeddedService implements DeepaMehtaService {
 
     // --- Topics ---
 
+    // FIXME: method to be dropped. Missing properties should be regarded as normal state.
+    // Otherwise all instances would be required to be updated once a data field has been added to the type definition.
+    // Application logic (server-side) and also the client should cope with missing properties.
     private Map initProperties(Map properties, String typeUri) {
         if (properties == null) {
             properties = new HashMap();
