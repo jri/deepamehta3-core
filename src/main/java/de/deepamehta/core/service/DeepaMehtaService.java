@@ -88,7 +88,7 @@ public interface DeepaMehtaService {
 
     public TopicType getTopicType(String typeUri);
 
-    public void createTopicType(Map properties, List dataFields);
+    public TopicType createTopicType(Map properties, List dataFields);
 
     public void addDataField(String typeUri, DataField dataField);
 

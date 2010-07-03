@@ -458,15 +458,16 @@ public class EmbeddedService implements DeepaMehtaService {
     }
 
     @Override
-    public void createTopicType(Map properties, List dataFields) {
+    public TopicType createTopicType(Map properties, List dataFields) {
+        TopicType topicType = null;
         RuntimeException ex = null;
         Transaction tx = storage.beginTx();
         try {
-            TopicType topicType = new TopicType(properties, dataFields);
+            TopicType tt = new TopicType(properties, dataFields);
             //
-            triggerHook(Hook.PRE_CREATE, topicType, null);  // FIXME: clientContext=null
+            triggerHook(Hook.PRE_CREATE, tt, null);  // FIXME: clientContext=null
             //
-            storage.createTopicType(properties, dataFields);
+            topicType = storage.createTopicType(properties, dataFields);
             //
             tx.success();
         } catch (Throwable e) {
@@ -475,7 +476,9 @@ public class EmbeddedService implements DeepaMehtaService {
                 properties.get("http://www.deepamehta.de/core/property/TypeURI") + "\" can't be created", e);
         } finally {
             tx.finish();
-            if (ex != null) {
+            if (ex == null) {
+                return topicType;
+            } else {
                 throw ex;
             }
         }

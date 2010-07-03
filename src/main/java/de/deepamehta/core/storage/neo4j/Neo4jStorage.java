@@ -253,8 +253,10 @@ public class Neo4jStorage implements Storage {
     }
 
     @Override
-    public void createTopicType(Map<String, Object> properties, List<DataField> dataFields) {
-        typeCache.put(new Neo4jTopicType(properties, dataFields, this));
+    public TopicType createTopicType(Map<String, Object> properties, List<DataField> dataFields) {
+        TopicType topicType = new Neo4jTopicType(properties, dataFields, this);
+        typeCache.put(topicType);
+        return topicType;
     }
 
     @Override

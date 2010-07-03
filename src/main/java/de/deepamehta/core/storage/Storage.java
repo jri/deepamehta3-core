@@ -79,7 +79,7 @@ public interface Storage {
 
     public TopicType getTopicType(String typeUri);
 
-    public void createTopicType(Map<String, Object> properties, List<DataField> dataFields);
+    public TopicType createTopicType(Map<String, Object> properties, List<DataField> dataFields);
 
     public void addDataField(String typeUri, DataField dataField);
 

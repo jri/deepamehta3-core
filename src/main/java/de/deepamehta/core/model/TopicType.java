@@ -56,6 +56,7 @@ public class TopicType extends Topic {
                 addDataField(new DataField(fieldDefs.getJSONObject(i)));
             }
         } catch (Throwable e) {
+            e.printStackTrace();    // FIXME: to be dropped
             throw new RuntimeException("Error while parsing topic type \"" +
                 getProperty("http://www.deepamehta.de/core/property/TypeURI") + "\"", e);
         }
@@ -66,6 +67,8 @@ public class TopicType extends Topic {
     @Override
     public JSONObject toJSON() throws JSONException {
         JSONObject o = new JSONObject();
+        o.put("id", id);                // "derived" from Topic
+        o.put("type_uri", typeUri);     // "derived" from Topic
         o.put("uri", getProperty("http://www.deepamehta.de/core/property/TypeURI"));
         //
         JSONArray fields = new JSONArray();
