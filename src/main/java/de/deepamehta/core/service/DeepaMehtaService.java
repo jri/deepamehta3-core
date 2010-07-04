@@ -90,6 +90,9 @@ public interface DeepaMehtaService {
 
     public TopicType createTopicType(Map properties, List dataFields);
 
+    /* FIXME: to be dropped
+    public void updateTopicType(String typeUri, Map properties); */
+
     public void addDataField(String typeUri, DataField dataField);
 
     public void updateDataField(String typeUri, DataField dataField);

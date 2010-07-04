@@ -29,6 +29,8 @@ import java.util.logging.Logger;
 
 public class EmbeddedService implements DeepaMehtaService {
 
+    private static final String CORE_MIGRATIONS_PACKAGE = "de.deepamehta.core.migrations";
+
     private Map<String, Plugin> plugins = new HashMap();
 
     private Storage storage;
@@ -484,6 +486,25 @@ public class EmbeddedService implements DeepaMehtaService {
         }
     }
 
+    /* FIXME: to be dropped
+    @Override
+    public void updateTopicType(String typeUri, Map properties) {
+        RuntimeException ex = null;
+        Transaction tx = storage.beginTx();
+        try {
+            storage.updateTopicType(typeUri, properties);
+            tx.success();
+        } catch (Throwable e) {
+            logger.warning("ROLLBACK!");
+            ex = new RuntimeException("Topic type \"" + typeUri + "\" can't be updated", e);
+        } finally {
+            tx.finish();
+            if (ex != null) {
+                throw ex;
+            }
+        }
+    } */
+
     @Override
     public void addDataField(String typeUri, DataField dataField) {
         RuntimeException ex = null;
@@ -666,7 +687,7 @@ public class EmbeddedService implements DeepaMehtaService {
 
     private void runCoreMigration(int migrationNr) {
         try {
-            String migrationClassName = "de.deepamehta.core.migrations.Migration" + migrationNr;
+            String migrationClassName = CORE_MIGRATIONS_PACKAGE + ".Migration" + migrationNr;
             Migration migration = (Migration) Class.forName(migrationClassName).newInstance();
             logger.info("Running core migration " + migration.getClass().getName());
             migration.setDeepaMehtaService(this);

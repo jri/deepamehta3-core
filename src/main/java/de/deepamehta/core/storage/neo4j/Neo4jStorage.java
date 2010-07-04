@@ -259,6 +259,12 @@ public class Neo4jStorage implements Storage {
         return topicType;
     }
 
+    /* FIXME: to be dropped
+    @Override
+    public void updateTopicType(String typeUri, Map properties) {
+        getTopicType(typeUri).update(properties);
+    } */
+
     @Override
     public void addDataField(String typeUri, DataField dataField) {
         getTopicType(typeUri).addDataField(dataField);

@@ -69,6 +69,11 @@ public class Topic {
         properties.put(key, value);
     }
 
+    /* FIXME: to be dropped
+    public void update(Map<String, Object> properties) {
+        this.properties.putAll(properties);
+    } */
+
     // ---
 
     public JSONObject toJSON() throws JSONException {

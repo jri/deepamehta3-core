@@ -42,7 +42,9 @@ class Neo4jTopicType extends TopicType {
      * Constructs a topic type and writes it to the database.
      */
     Neo4jTopicType(Map<String, Object> properties, List<DataField> dataFields, Neo4jStorage storage) {
+        // 1) update memory
         super(properties, new ArrayList());
+        // 2) update DB
         this.storage = storage;
         // create type
         String typeUri = (String) properties.get("http://www.deepamehta.de/core/property/TypeURI");
@@ -74,6 +76,20 @@ class Neo4jTopicType extends TopicType {
 
     // -------------------------------------------------------------------------------------------------- Public Methods
 
+    /* FIXME: to be dropped
+    @Override
+    public void update(Map<String, Object> properties) {
+        // update memory
+        super.update(properties);
+        // update DB
+        String typeUri = (String) properties.get("http://www.deepamehta.de/core/property/TypeURI");
+        if (typeUri != null) {
+            typeNode.setProperty(MetaModelProperty.KEY_NAME, typeUri);
+        }
+    } */
+
+    // ---
+
     @Override
     public Neo4jDataField getDataField(int index) {
         return (Neo4jDataField) super.getDataField(index);
@@ -83,8 +99,6 @@ class Neo4jTopicType extends TopicType {
     public Neo4jDataField getDataField(String uri) {
         return (Neo4jDataField) super.getDataField(uri);
     }
-
-    // ---
 
     /**
      * Adds a data field to this topic type and writes the data field to the database.
