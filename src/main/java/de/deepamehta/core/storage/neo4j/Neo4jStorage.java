@@ -271,12 +271,6 @@ public class Neo4jStorage implements Storage {
         return topicType;
     }
 
-    /* FIXME: to be dropped
-    @Override
-    public void updateTopicType(String typeUri, Map properties) {
-        getTopicType(typeUri).update(properties);
-    } */
-
     @Override
     public void addDataField(String typeUri, DataField dataField) {
         getTopicType(typeUri).addDataField(dataField);
@@ -352,7 +346,7 @@ public class Neo4jStorage implements Storage {
     // --- Topics ---
 
     /**
-     * Builds a DeepaMehta topic from a Neo4j node.
+     * Builds a DeepaMehta {@link Topic} from a Neo4j node.
      *
      * @param   includeProperties   if true, the topic properties are fetched.
      */

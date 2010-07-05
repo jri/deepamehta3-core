@@ -44,7 +44,7 @@ public class DataField {
     }
 
     public DataField(Map properties) {
-        update(properties);
+        init(properties);
     }
 
     public DataField(JSONObject dataField) {
@@ -112,12 +112,7 @@ public class DataField {
     }
 
     public void update(Map<String, String> properties) {
-        setUri(properties.get("uri"));
-        setDataType(properties.get("data_type"));
-        setRelatedTypeUri(properties.get("related_type_uri"));
-        setLabel(properties.get("label"));
-        setEditor(properties.get("editor"));
-        setIndexingMode(properties.get("indexing_mode"));
+        init(properties);
     }
 
     // ---
@@ -167,5 +162,16 @@ public class DataField {
     public String toString() {
         return "data field \"" + label + "\" (uri=\"" + uri + "\" dataType=\"" + dataType + "\" relatedTypeUri=\"" +
             relatedTypeUri + "\" editor=\"" + editor + "\" indexingMode=\"" + indexingMode + "\")";
+    }
+
+    // ------------------------------------------------------------------------------------------------- Private Methods
+
+    private void init(Map<String, String> properties) {
+        setUri(properties.get("uri"));
+        setDataType(properties.get("data_type"));
+        setRelatedTypeUri(properties.get("related_type_uri"));
+        setLabel(properties.get("label"));
+        setEditor(properties.get("editor"));
+        setIndexingMode(properties.get("indexing_mode"));
     }
 }

@@ -10,7 +10,7 @@ import java.util.Map;
 
 /**
  * A topic -- DeepaMehta's core data object.
- * A topic has an ID, a type, a label, a set of properties, and is related to other topics.
+ * A topic has an ID, a type, a label, a set of properties, and is related to other topics via {@link Relation}s.
  * <br><br>
  * Instances of this class are used to pass data around (<i>data transfer object</i>).
  * <br><br>
@@ -72,11 +72,6 @@ public class Topic {
     public void setProperty(String key, Object value) {
         properties.put(key, value);
     }
-
-    /* FIXME: to be dropped
-    public void update(Map<String, Object> properties) {
-        this.properties.putAll(properties);
-    } */
 
     // ---
 

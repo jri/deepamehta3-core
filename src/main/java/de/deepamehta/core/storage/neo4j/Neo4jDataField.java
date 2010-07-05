@@ -11,7 +11,9 @@ import java.util.logging.Logger;
 
 
 /**
- * This class extends DataField to provide persistence by the means of Neo4j.
+ * Backs {@link DataField} by Neo4j database.
+ *
+ * @author <a href="mailto:jri@deepamehta.de">Jörg Richter</a>
  */
 class Neo4jDataField extends DataField {
 
@@ -44,13 +46,10 @@ class Neo4jDataField extends DataField {
 
     @Override
     public void update(Map<String, String> properties) {
+        // update memory
         super.update(properties);
+        // update DB
         for (String key : properties.keySet()) {
-            // FIXME: checks to be dropped
-            if (node == null) logger.warning("### node==null (" + this +")");
-            if (key  == null) logger.warning("### key==null (" + this +")");
-            if (properties == null) logger.warning("### properties==null (" + this +")");
-            //
             node.setProperty(key, properties.get(key));
         }
     }

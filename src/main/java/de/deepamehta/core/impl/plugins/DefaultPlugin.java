@@ -46,8 +46,7 @@ public class DefaultPlugin extends Plugin {
             String newTypeLabel = (String) topic.getProperty("http://www.deepamehta.de/core/property/TypeName");
             if (!oldTypeLabel.equals(newTypeLabel)) {
                 logger.info("### Changing type label from \"" + oldTypeLabel + "\" to \"" + newTypeLabel + "\"");
-                dms.getTopicType(newTypeUri).setProperty("http://www.deepamehta.de/core/property/TypeName",
-                    newTypeLabel);
+                dms.getTopicType(newTypeUri).setLabel(newTypeLabel);
             }
         }
     }

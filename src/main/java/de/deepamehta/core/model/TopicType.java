@@ -92,6 +92,10 @@ public class TopicType extends Topic {
         setProperty("http://www.deepamehta.de/core/property/TypeURI", typeUri);
     }
 
+    public void setLabel(String label) {
+        setProperty("http://www.deepamehta.de/core/property/TypeName", label);
+    }
+
     // ---
 
     public List<DataField> getDataFields() {

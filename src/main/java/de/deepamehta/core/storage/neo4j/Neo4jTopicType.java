@@ -83,7 +83,6 @@ class Neo4jTopicType extends TopicType {
     @Override
     public void setTypeUri(String typeUri) {
         String oldTypeUri = (String) getProperty("http://www.deepamehta.de/core/property/TypeURI");
-        storage.index.removeIndex(typeNode, MetaModelProperty.KEY_NAME);
         // 1) update memory
         storage.typeCache.remove(oldTypeUri);
         super.setTypeUri(typeUri);
@@ -91,20 +90,23 @@ class Neo4jTopicType extends TopicType {
         // 2) update DB
         typeNode.setProperty("http://www.deepamehta.de/core/property/TypeURI", typeUri);
         typeNode.setProperty(MetaModelProperty.KEY_NAME, typeUri);
-        // log
+        // debug (FIXME: to be dropped)
         MetaModelClass bo = storage.getMetaModelClass(oldTypeUri);
         MetaModelClass bn = storage.getMetaModelClass(typeUri);
         logger.info("### Before index update:\n" +
                     "### old URI=\"" + oldTypeUri + "\" => " + bo + (bo != null ? " (" + bo.node() + ")" : "") + "\n" +
                     "### new URI=\"" + typeUri +    "\" => " + bn + (bn != null ? " (" + bn.node() + ")" : "") + "\n");
         // update index
+        storage.index.removeIndex(typeNode, MetaModelProperty.KEY_NAME);
         storage.index.index(typeNode, MetaModelProperty.KEY_NAME, typeUri);
-        // log
+        // debug (FIXME: to be dropped)
         MetaModelClass ao = storage.getMetaModelClass(oldTypeUri);
         MetaModelClass an = storage.getMetaModelClass(typeUri);
         logger.info("### After index update:\n" +
                     "### old URI=\"" + oldTypeUri + "\" => " + ao + (ao != null ? " (" + ao.node() + ")" : "") + "\n" +
                     "### new URI=\"" + typeUri +    "\" => " + an + (an != null ? " (" + an.node() + ")" : "") + "\n");
+        // reassign data field sequence to new URI
+        reassignFieldSequence(oldTypeUri, typeUri);
     }
 
     // ---
@@ -178,11 +180,21 @@ class Neo4jTopicType extends TopicType {
         rel.setProperty("type_uri", typeUri);
     }
 
-    private void addToFieldSequence(Node fieldNode, int prevIndex) {
-        Node prevFieldNode = getDataField(prevIndex).node;
+    private void addToFieldSequence(Node fieldNode, int prevFieldIndex) {
+        Node prevFieldNode = getDataField(prevFieldIndex).node;
         Relationship rel = prevFieldNode.createRelationshipTo(fieldNode, Neo4jStorage.RelType.SEQUENCE);
         String typeUri = (String) properties.get("http://www.deepamehta.de/core/property/TypeURI");
         rel.setProperty("type_uri", typeUri);
+    }
+
+    private void reassignFieldSequence(String oldTypeUri, String typeUri) {
+        logger.info("### Re-assigning data field sequence from type \"" + oldTypeUri + "\" to \"" + typeUri + "\"");
+        int count = 0;
+        for (Position pos : getNodeSequence(oldTypeUri)) {
+            pos.lastRelationship().setProperty("type_uri", typeUri);
+            count++;
+        }
+        logger.info("### " + count + " data fields re-assigned");
     }
 
     // ---
@@ -199,7 +211,8 @@ class Neo4jTopicType extends TopicType {
         }
         //
         List dataFields = new ArrayList();
-        for (Node fieldNode : getNodeSequence(typeNode)) {
+        for (Position pos : getNodeSequence(typeUri)) {
+            Node fieldNode = pos.node();
             logger.fine("  # Result " + fieldNode);
             // error check
             if (!propNodes.contains(fieldNode)) {
@@ -218,9 +231,7 @@ class Neo4jTopicType extends TopicType {
         return dataFields;
     }
 
-    private Iterable<Node> getNodeSequence(Node startNode) {
-        String typeUri = (String) properties.get("http://www.deepamehta.de/core/property/TypeURI");
-        //
+    private Iterable<Position> getNodeSequence(String typeUri) {
         TraversalDescription desc = TraversalFactory.createTraversalDescription();
         desc = desc.relationships(Neo4jStorage.RelType.SEQUENCE_START, Direction.OUTGOING);
         desc = desc.relationships(Neo4jStorage.RelType.SEQUENCE,       Direction.OUTGOING);
@@ -234,7 +245,7 @@ class Neo4jTopicType extends TopicType {
         // (default uniqueness is not RELATIONSHIP_GLOBAL, but probably NODE_GLOBAL).
         desc = desc.uniqueness(Uniqueness.RELATIONSHIP_GLOBAL);
         //
-        return desc.traverse(startNode).nodes();
+        return desc.traverse(typeNode);
     }
 
     private class SequenceReturnFilter implements Predicate {
