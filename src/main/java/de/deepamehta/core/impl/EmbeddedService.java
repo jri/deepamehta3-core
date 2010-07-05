@@ -1,5 +1,6 @@
 package de.deepamehta.core.impl;
 
+import de.deepamehta.core.impl.plugins.DefaultPlugin;
 import de.deepamehta.core.model.DataField;
 import de.deepamehta.core.model.Topic;
 import de.deepamehta.core.model.TopicType;
@@ -29,7 +30,7 @@ import java.util.logging.Logger;
 
 public class EmbeddedService implements DeepaMehtaService {
 
-    private static final String CORE_MIGRATIONS_PACKAGE = "de.deepamehta.core.migrations";
+    private static final String CORE_MIGRATIONS_PACKAGE = "de.deepamehta.core.impl.migrations";
 
     private Map<String, Plugin> plugins = new HashMap();
 
@@ -37,10 +38,10 @@ public class EmbeddedService implements DeepaMehtaService {
 
     private enum Hook {
 
-        PRE_CREATE("preCreateHook", Topic.class, Map.class),
+        PRE_CREATE("preCreateHook",   Topic.class, Map.class),
         POST_CREATE("postCreateHook", Topic.class, Map.class),
-        PRE_UPDATE("preUpdateHook", Topic.class),
-        POST_UPDATE("postUpdateHook", Topic.class),
+        PRE_UPDATE("preUpdateHook",   Topic.class, Map.class),
+        POST_UPDATE("postUpdateHook", Topic.class, Map.class),
 
         PROVIDE_TOPIC_PROPERTIES("providePropertiesHook", Topic.class),
         PROVIDE_RELATION_PROPERTIES("providePropertiesHook", Relation.class);
@@ -79,6 +80,8 @@ public class EmbeddedService implements DeepaMehtaService {
                 throw ex;
             }
         }
+        // register default plugin
+        registerPlugin("de.deepamehta.3-core", new DefaultPlugin());
     }
 
 
@@ -186,8 +189,8 @@ public class EmbeddedService implements DeepaMehtaService {
                                                              List<String> excludeRelTypes) {
         // set defaults
         if (includeTopicTypes == null) includeTopicTypes = new ArrayList();
-        if (includeRelTypes == null) includeRelTypes = new ArrayList();
-        if (excludeRelTypes == null) excludeRelTypes = new ArrayList();
+        if (includeRelTypes   == null) includeRelTypes   = new ArrayList();
+        if (excludeRelTypes   == null) excludeRelTypes   = new ArrayList();
         // error check
         if (!includeRelTypes.isEmpty() && !excludeRelTypes.isEmpty()) {
             throw new IllegalArgumentException("includeRelTypes and excludeRelTypes can not be used at the same time");
@@ -279,7 +282,16 @@ public class EmbeddedService implements DeepaMehtaService {
         RuntimeException ex = null;
         Transaction tx = storage.beginTx();
         try {
+            Topic topic = getTopic(id);
+            Map oldProperties = topic.getProperties();
+            //
+            triggerHook(Hook.PRE_UPDATE, topic, properties);
+            //
             storage.setTopicProperties(id, properties);
+            //
+            topic.setProperties(properties);
+            triggerHook(Hook.POST_UPDATE, topic, oldProperties);
+            //
             tx.success();   
         } catch (Throwable e) {
             logger.warning("ROLLBACK!");

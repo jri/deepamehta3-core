@@ -9,8 +9,8 @@ import java.util.Map;
 
 
 /**
- * The model of a topic, DeepaMehta's core data object.
- * A topic has an ID, a type, a label, and a set of properties.
+ * A topic -- DeepaMehta's core data object.
+ * A topic has an ID, a type, a label, a set of properties, and is related to other topics.
  * <br><br>
  * Instances of this class are used to pass data around (<i>data transfer object</i>).
  * <br><br>
@@ -48,6 +48,10 @@ public class Topic {
 
     public Map<String, Object> getProperties() {
         return properties;
+    }
+
+    public void setProperties(Map<String, Object> properties) {
+        this.properties = properties;
     }
 
     public Object getProperty(String key) {

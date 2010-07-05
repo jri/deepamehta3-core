@@ -1,4 +1,4 @@
-package de.deepamehta.core.migrations;
+package de.deepamehta.core.impl.migrations;
 
 import de.deepamehta.core.service.Migration;
 

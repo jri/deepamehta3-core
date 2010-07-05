@@ -9,6 +9,16 @@ import java.util.Map;
 
 
 
+/**
+ * A data field. Part of the meta-model (like an attribute). A data field is part of a {@link TopicType}.
+ * <br><br>
+ * A data field has a label and a data type.
+ * A data field is identified by an URI.
+ * Furthermore a data field has a) an indexing mode which controls the indexing of the data field's value, and
+ * b) hints which control the building of an corresponding editor widget.
+ *
+ * @author <a href="mailto:jri@deepamehta.de">Jörg Richter</a>
+ */
 public class DataField {
     
     // ---------------------------------------------------------------------------------------------- Instance Variables

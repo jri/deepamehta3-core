@@ -12,11 +12,10 @@ import java.util.Map;
 
 
 /**
- * The model of a topic type. A topic type is basically an ordered collection of data fields.
- * A topic type is itself a topic.
- *
- * @see DataField
- * @see Topic
+ * A topic type. Part of the meta-model (like a class).
+ * <br><br>
+ * A topic type is an ordered collection of {@link DataField}s.
+ * A topic type itself is a {@link Topic}.
  *
  * @author <a href="mailto:jri@deepamehta.de">Jörg Richter</a>
  */
@@ -85,6 +84,12 @@ public class TopicType extends Topic {
         //
         o.put("implementation", getProperty("implementation"));
         return o;
+    }
+
+    // ---
+
+    public void setTypeUri(String typeUri) {
+        setProperty("http://www.deepamehta.de/core/property/TypeURI", typeUri);
     }
 
     // ---

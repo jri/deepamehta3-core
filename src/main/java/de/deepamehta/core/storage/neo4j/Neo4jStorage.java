@@ -50,10 +50,18 @@ public class Neo4jStorage implements Storage {
 
     private GraphDatabaseService graphDb;
     private MetaModelNamespace namespace;
-    private IndexService index;
+
+    // Note: the index service is package private in order to let a Neo4jTopicType re-index itself when its URI changes.
+    // See Neo4jTopicType.setTypeUri(). We do it this way because we don't want extend the core service resp.
+    // the storage interfaces.
+    IndexService index;
+
     private LuceneFulltextQueryIndexService fulltextIndex;
-    //
-    private final TypeCache typeCache;
+
+    // Note: the type cache is package private in order to let a Neo4jTopicType re-hash itself when its URI changes.
+    // See Neo4jTopicType.setTypeUri(). We do it this way because we don't want extend the core service resp.
+    // the storage interfaces.
+    final TypeCache typeCache;
 
     // SEARCH_RESULT relations are not part of the knowledge base but help to visualize / navigate result sets.
     static enum RelType implements RelationshipType {
@@ -81,8 +89,7 @@ public class Neo4jStorage implements Storage {
     @Override
     public Topic getTopic(long id) {
         logger.info("Getting node " + id);
-        Node node = graphDb.getNodeById(id);
-        return new Topic(id, getTypeUri(node), null, getProperties(node));   // FIXME: label remains uninitialized
+        return buildTopic(graphDb.getNodeById(id), true);
     }
 
     @Override
@@ -102,7 +109,9 @@ public class Neo4jStorage implements Storage {
     public List<Topic> getTopics(String typeUri) {
         List topics = new ArrayList();
         for (Node node : getMetaClass(typeUri).getDirectInstances()) {
-            topics.add(buildTopic(node));
+            // Note: the topic properties remain uninitialzed here.
+            // It is up to the plugins to provide selected properties (see providePropertiesHook()).
+            topics.add(buildTopic(node, false));
         }
         return topics;
     }
@@ -122,10 +131,13 @@ public class Neo4jStorage implements Storage {
         Node startNode = graphDb.getNodeById(topicId);
         for (Position pos : desc.traverse(startNode)) {
             RelatedTopic relTopic = new RelatedTopic();
-            relTopic.setTopic(buildTopic(pos.node()));
+            // Note: the topic properties remain uninitialzed here.
+            // It is up to the plugins to provide selected properties (see providePropertiesHook()).
+            relTopic.setTopic(buildTopic(pos.node(), false));
             // Note: the relation properties remain uninitialzed here.
             // It is up to the plugins to provide selected properties (see providePropertiesHook()).
             relTopic.setRelation(buildRelation(pos.lastRelationship(), false));
+            //
             relTopics.add(relTopic);
         }
         logger.info("=> " + relTopics.size() + " related nodes");
@@ -339,7 +351,12 @@ public class Neo4jStorage implements Storage {
 
     // --- Topics ---
 
-    private Topic buildTopic(Node node) {
+    /**
+     * Builds a DeepaMehta topic from a Neo4j node.
+     *
+     * @param   includeProperties   if true, the topic properties are fetched.
+     */
+    private Topic buildTopic(Node node, boolean includeProperties) {
         // 1) calculate type
         String typeUri = getTypeUri(node);
         // 2) calculate label
@@ -357,9 +374,9 @@ public class Neo4jStorage implements Storage {
                 label = "?";
             }
         }
-        // Note: the properties remain uninitialzed here.
-        // It is up to the plugins to provide selected properties (see providePropertiesHook()).
-        return new Topic(node.getId(), typeUri, label, null);
+        //
+        Map properties = includeProperties ? getProperties(node) : null;
+        return new Topic(node.getId(), typeUri, label, properties);
     }
 
     // --- Relations ---
@@ -418,7 +435,7 @@ public class Neo4jStorage implements Storage {
             if (indexingMode.equals("OFF")) {
                 return;
             } else if (indexingMode.equals("KEY")) {
-                index.index(node, key, value);  // FIXME: include topic type in index key
+                index.index(node, key, value);
             } else if (indexingMode.equals("FULLTEXT")) {
                 fulltextIndex.index(node, "default", value);
             } else if (indexingMode.equals("FULLTEXT_KEY")) {
@@ -494,11 +511,20 @@ public class Neo4jStorage implements Storage {
         return metaClass;
     }
 
+    // FIXME: to be dropped
+    MetaModelClass getMetaModelClass(String typeUri) {
+        return namespace.getMetaClass(typeUri, false);
+    }
+
     Collection<MetaModelClass> getAllMetaClasses() {
         return namespace.getMetaClasses();
     }
 
     MetaModelClass createMetaClass(String typeUri) {
+        MetaModelClass metaClass = namespace.getMetaClass(typeUri, false);
+        if (metaClass != null) {
+            throw new RuntimeException("Topic type with URI \"" + typeUri + "\" already exists");
+        }
         return namespace.getMetaClass(typeUri, true);
     }
 

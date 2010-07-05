@@ -38,9 +38,11 @@ public class TypeCache {
         topicTypes.put(typeUri, topicType);
     }
 
-    /* public void invalidate(String typeUri) {
+    public void remove(String typeUri) {
         if (topicTypes.remove(typeUri) != null) {
             logger.info("Removing topic type \"" + typeUri + "\" from type cache");
+        } else {
+            throw new RuntimeException("Topic type \"" + typeUri + "\" not found in type cache");
         }
-    } */
+    }
 }

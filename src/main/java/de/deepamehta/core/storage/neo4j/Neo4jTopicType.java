@@ -25,12 +25,15 @@ import java.util.logging.Logger;
 
 
 /**
- * This class extends TopicType to provide persistence by the means of Neo4j.
+ * Backs {@link TopicType} by Neo4j database.
+ *
+ * @author <a href="mailto:jri@deepamehta.de">Jörg Richter</a>
  */
 class Neo4jTopicType extends TopicType {
 
     // ---------------------------------------------------------------------------------------------- Instance Variables
 
+    MetaModelClass metaClass;
     Node typeNode;
     Neo4jStorage storage;
 
@@ -45,10 +48,10 @@ class Neo4jTopicType extends TopicType {
         // 1) update memory
         super(properties, new ArrayList());
         // 2) update DB
-        this.storage = storage;
         // create type
         String typeUri = (String) properties.get("http://www.deepamehta.de/core/property/TypeURI");
-        MetaModelClass metaClass = storage.createMetaClass(typeUri);
+        this.storage = storage;
+        this.metaClass = storage.createMetaClass(typeUri);
         this.typeNode = metaClass.node();
         this.id = typeNode.getId();
         logger.info("Creating topic type \"" + typeUri + "\" => ID=" + id);
@@ -68,7 +71,8 @@ class Neo4jTopicType extends TopicType {
     Neo4jTopicType(String typeUri, Neo4jStorage storage) {
         super(null, null);
         this.storage = storage;
-        this.typeNode = getTypeNode(typeUri);
+        this.metaClass = storage.getMetaClass(typeUri);
+        this.typeNode = metaClass.node();
         this.properties = storage.getProperties(typeNode);
         this.dataFields = readDataFields();
         this.id = typeNode.getId();
@@ -76,17 +80,32 @@ class Neo4jTopicType extends TopicType {
 
     // -------------------------------------------------------------------------------------------------- Public Methods
 
-    /* FIXME: to be dropped
     @Override
-    public void update(Map<String, Object> properties) {
-        // update memory
-        super.update(properties);
-        // update DB
-        String typeUri = (String) properties.get("http://www.deepamehta.de/core/property/TypeURI");
-        if (typeUri != null) {
-            typeNode.setProperty(MetaModelProperty.KEY_NAME, typeUri);
-        }
-    } */
+    public void setTypeUri(String typeUri) {
+        String oldTypeUri = (String) getProperty("http://www.deepamehta.de/core/property/TypeURI");
+        storage.index.removeIndex(typeNode, MetaModelProperty.KEY_NAME);
+        // 1) update memory
+        storage.typeCache.remove(oldTypeUri);
+        super.setTypeUri(typeUri);
+        storage.typeCache.put(this);
+        // 2) update DB
+        typeNode.setProperty("http://www.deepamehta.de/core/property/TypeURI", typeUri);
+        typeNode.setProperty(MetaModelProperty.KEY_NAME, typeUri);
+        // log
+        MetaModelClass bo = storage.getMetaModelClass(oldTypeUri);
+        MetaModelClass bn = storage.getMetaModelClass(typeUri);
+        logger.info("### Before index update:\n" +
+                    "### old URI=\"" + oldTypeUri + "\" => " + bo + (bo != null ? " (" + bo.node() + ")" : "") + "\n" +
+                    "### new URI=\"" + typeUri +    "\" => " + bn + (bn != null ? " (" + bn.node() + ")" : "") + "\n");
+        // update index
+        storage.index.index(typeNode, MetaModelProperty.KEY_NAME, typeUri);
+        // log
+        MetaModelClass ao = storage.getMetaModelClass(oldTypeUri);
+        MetaModelClass an = storage.getMetaModelClass(typeUri);
+        logger.info("### After index update:\n" +
+                    "### old URI=\"" + oldTypeUri + "\" => " + ao + (ao != null ? " (" + ao.node() + ")" : "") + "\n" +
+                    "### new URI=\"" + typeUri +    "\" => " + an + (an != null ? " (" + an.node() + ")" : "") + "\n");
+    }
 
     // ---
 
@@ -216,10 +235,6 @@ class Neo4jTopicType extends TopicType {
         desc = desc.uniqueness(Uniqueness.RELATIONSHIP_GLOBAL);
         //
         return desc.traverse(startNode).nodes();
-    }
-
-    private Node getTypeNode(String typeUri) {
-        return storage.getMetaClass(typeUri).node();
     }
 
     private class SequenceReturnFilter implements Predicate {

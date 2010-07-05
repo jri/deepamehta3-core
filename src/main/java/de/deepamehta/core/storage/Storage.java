@@ -81,9 +81,6 @@ public interface Storage {
 
     public TopicType createTopicType(Map<String, Object> properties, List<DataField> dataFields);
 
-    /* FIXME: to be dropped
-    public void updateTopicType(String typeUri, Map properties); */
-
     public void addDataField(String typeUri, DataField dataField);
 
     public void updateDataField(String typeUri, DataField dataField);

@@ -42,7 +42,7 @@ public class Plugin implements BundleActivator {
     private Bundle pluginBundle;
     private Topic  pluginTopic;             // Represents this plugin in DB. Holds plugin DB version number.
 
-    private Properties configProperties;    // Read from plugin.properties
+    protected Properties configProperties;    // Read from file "plugin.properties"
     private boolean isActivated;
 
     private ServiceTracker deepamehtaServiceTracker;
@@ -145,10 +145,10 @@ public class Plugin implements BundleActivator {
     public void postCreateHook(Topic topic, Map<String, String> clientContext) {
     }
 
-    public void preUpdateHook(Topic topic) {
+    public void preUpdateHook(Topic topic, Map<String, Object> newProperties) {
     }
 
-    public void postUpdateHook(Topic topic) {
+    public void postUpdateHook(Topic topic, Map<String, Object> oldProperties) {
     }
 
     // ---
