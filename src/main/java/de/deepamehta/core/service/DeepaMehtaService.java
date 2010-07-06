@@ -15,8 +15,6 @@ import java.util.Set;
 
 public interface DeepaMehtaService {
 
-    public static final int REQUIRED_DB_MODEL_VERSION = 1;
-
     // --- Topics ---
 
     public Topic getTopic(long id);
@@ -89,9 +87,6 @@ public interface DeepaMehtaService {
     public TopicType getTopicType(String typeUri);
 
     public TopicType createTopicType(Map properties, List dataFields);
-
-    /* FIXME: to be dropped
-    public void updateTopicType(String typeUri, Map properties); */
 
     public void addDataField(String typeUri, DataField dataField);
 

@@ -30,7 +30,9 @@ import java.util.logging.Logger;
 
 public class EmbeddedService implements DeepaMehtaService {
 
+    private static final String DATABASE_PATH = "deepamehta-db";
     private static final String CORE_MIGRATIONS_PACKAGE = "de.deepamehta.core.impl.migrations";
+    private static final int REQUIRED_DB_MODEL_VERSION = 1;
 
     private Map<String, Plugin> plugins = new HashMap();
 
@@ -498,25 +500,6 @@ public class EmbeddedService implements DeepaMehtaService {
         }
     }
 
-    /* FIXME: to be dropped
-    @Override
-    public void updateTopicType(String typeUri, Map properties) {
-        RuntimeException ex = null;
-        Transaction tx = storage.beginTx();
-        try {
-            storage.updateTopicType(typeUri, properties);
-            tx.success();
-        } catch (Throwable e) {
-            logger.warning("ROLLBACK!");
-            ex = new RuntimeException("Topic type \"" + typeUri + "\" can't be updated", e);
-        } finally {
-            tx.finish();
-            if (ex != null) {
-                throw ex;
-            }
-        }
-    } */
-
     @Override
     public void addDataField(String typeUri, DataField dataField) {
         RuntimeException ex = null;
@@ -672,8 +655,7 @@ public class EmbeddedService implements DeepaMehtaService {
     // --- DB ---
 
     private void openDB() {
-        // FIXME: make the DB path a configuration setting
-        storage = new Neo4jStorage("/Users/jri/var/db/deepamehta-db-neo4j");
+        storage = new Neo4jStorage(DATABASE_PATH);
     }
 
     private void initDB() {
