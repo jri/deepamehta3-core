@@ -7,7 +7,7 @@ import de.deepamehta.core.model.RelatedTopic;
 import de.deepamehta.core.model.Relation;
 import de.deepamehta.core.storage.Storage;
 
-import org.neo4j.commons.Predicate;
+import org.neo4j.helpers.Predicate;
 import org.neo4j.graphdb.Direction;
 import org.neo4j.graphdb.DynamicRelationshipType;
 import org.neo4j.graphdb.GraphDatabaseService;
@@ -49,18 +49,17 @@ public class Neo4jStorage implements Storage {
     private final Logger logger = Logger.getLogger(getClass().getName());
 
     private GraphDatabaseService graphDb;
-    private MetaModelNamespace namespace;
-
-    // Note: the index service is package private in order to let a Neo4jTopicType re-index itself when its URI changes.
-    // See Neo4jTopicType.setTypeUri(). We do it this way because we don't want extend the core service resp.
-    // the storage interfaces.
-    IndexService index;
-
+    private IndexService index;
     private LuceneFulltextQueryIndexService fulltextIndex;
 
+    // Note: the meta-model namespace is package private in order to let a Neo4jTopicType rename itself when its
+    // URI changes. See Neo4jTopicType.setTypeUri().
+    // We do it this way because we don't want extend the core service resp. the storage interfaces.
+    MetaModelNamespace namespace;
+
     // Note: the type cache is package private in order to let a Neo4jTopicType re-hash itself when its URI changes.
-    // See Neo4jTopicType.setTypeUri(). We do it this way because we don't want extend the core service resp.
-    // the storage interfaces.
+    // See Neo4jTopicType.setTypeUri().
+    // We do it this way because we don't want extend the core service resp. the storage interfaces.
     final TypeCache typeCache;
 
     // SEARCH_RESULT relations are not part of the knowledge base but help to visualize / navigate result sets.

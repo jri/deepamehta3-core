@@ -3,7 +3,7 @@ package de.deepamehta.core.storage.neo4j;
 import de.deepamehta.core.model.DataField;
 import de.deepamehta.core.model.TopicType;
 
-import org.neo4j.commons.Predicate;
+import org.neo4j.helpers.Predicate;
 import org.neo4j.graphdb.Node;
 import org.neo4j.graphdb.Direction;
 import org.neo4j.graphdb.Relationship;
@@ -89,22 +89,7 @@ class Neo4jTopicType extends TopicType {
         storage.typeCache.put(this);
         // 2) update DB
         typeNode.setProperty("http://www.deepamehta.de/core/property/TypeURI", typeUri);
-        typeNode.setProperty(MetaModelProperty.KEY_NAME, typeUri);
-        // debug (FIXME: to be dropped)
-        MetaModelClass bo = storage.getMetaModelClass(oldTypeUri);
-        MetaModelClass bn = storage.getMetaModelClass(typeUri);
-        logger.info("### Before index update:\n" +
-                    "### old URI=\"" + oldTypeUri + "\" => " + bo + (bo != null ? " (" + bo.node() + ")" : "") + "\n" +
-                    "### new URI=\"" + typeUri +    "\" => " + bn + (bn != null ? " (" + bn.node() + ")" : "") + "\n");
-        // update index
-        storage.index.removeIndex(typeNode, MetaModelProperty.KEY_NAME);
-        storage.index.index(typeNode, MetaModelProperty.KEY_NAME, typeUri);
-        // debug (FIXME: to be dropped)
-        MetaModelClass ao = storage.getMetaModelClass(oldTypeUri);
-        MetaModelClass an = storage.getMetaModelClass(typeUri);
-        logger.info("### After index update:\n" +
-                    "### old URI=\"" + oldTypeUri + "\" => " + ao + (ao != null ? " (" + ao.node() + ")" : "") + "\n" +
-                    "### new URI=\"" + typeUri +    "\" => " + an + (an != null ? " (" + an.node() + ")" : "") + "\n");
+        storage.namespace.rename(oldTypeUri, typeUri);
         // reassign data field sequence to new URI
         reassignFieldSequence(oldTypeUri, typeUri);
     }
