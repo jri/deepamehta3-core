@@ -94,6 +94,8 @@ public interface DeepaMehtaService {
 
     public void removeDataField(String typeUri, String fieldUri);
 
+    public void setDataFieldOrder(String typeUri, List fieldUris);
+
     // --- Plugins ---
 
     public void registerPlugin(String pluginId, Plugin plugin);

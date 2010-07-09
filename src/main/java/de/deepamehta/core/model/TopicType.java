@@ -132,4 +132,19 @@ public class TopicType extends Topic {
             throw new RuntimeException("Data field \"" + uri + "\" can't be removed", e);
         }
     }
+
+    public void setDataFieldOrder(List<String> uris) {
+        //
+        if (uris.size() != dataFields.size()) {
+            throw new RuntimeException("There are " + dataFields.size() + " data fields " +
+                "to order but ordering description has " + uris.size());
+        }
+        //
+        List reorderedDataFields = new ArrayList();
+        for (String uri : uris) {
+            reorderedDataFields.add(getDataField(uri));
+        }
+        //
+        dataFields = reorderedDataFields;
+    }
 }

@@ -538,6 +538,7 @@ public class EmbeddedService implements DeepaMehtaService {
         }
     }
 
+    @Override
     public void removeDataField(String typeUri, String fieldUri) {
         RuntimeException ex = null;
         Transaction tx = storage.beginTx();
@@ -548,6 +549,24 @@ public class EmbeddedService implements DeepaMehtaService {
             logger.warning("ROLLBACK!");
             ex = new RuntimeException("Data field \"" + fieldUri + "\" of topic type \"" +
                 typeUri + "\" can't be removed", e);
+        } finally {
+            tx.finish();
+            if (ex != null) {
+                throw ex;
+            }
+        }
+    }
+
+    @Override
+    public void setDataFieldOrder(String typeUri, List fieldUris) {
+        RuntimeException ex = null;
+        Transaction tx = storage.beginTx();
+        try {
+            storage.setDataFieldOrder(typeUri, fieldUris);
+            tx.success();
+        } catch (Throwable e) {
+            logger.warning("ROLLBACK!");
+            ex = new RuntimeException("Data field order of topic type \"" + typeUri + "\" can't be set", e);
         } finally {
             tx.finish();
             if (ex != null) {

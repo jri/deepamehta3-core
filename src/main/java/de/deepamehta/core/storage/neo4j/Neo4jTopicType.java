@@ -117,19 +117,14 @@ class Neo4jTopicType extends TopicType {
         Neo4jDataField field = new Neo4jDataField(dataField, storage);
         storage.getMetaClass(typeUri).getDirectProperties().add(field.getMetaProperty());
         // put in sequence
-        Node fieldNode = field.node;
-        if (dataFields.size() == 0) {
-            startFieldSequence(fieldNode);
-        } else {
-            addToFieldSequence(fieldNode, dataFields.size() - 1);
-        }
+        putInFieldSequence(field.node, dataFields.size());
         // 2) update memory
         super.addDataField(field);
     }
 
     @Override
     public void removeDataField(String uri) {
-        Neo4jDataField field = getDataField(uri);    // the data field to remove
+        Neo4jDataField field = getDataField(uri);   // the data field to remove
         int index = dataFields.indexOf(field);      // the index of the data field to remove
         if (index == -1) {
             throw new RuntimeException("List.indexOf() returned -1");
@@ -148,7 +143,7 @@ class Neo4jTopicType extends TopicType {
                 // The data field to remove is surrounded by other data fields.
                 // -> Make the surrounding data fields direct neighbours.
                 Node nextFieldNode = getDataField(index + 1).node;
-                addToFieldSequence(nextFieldNode, index - 1);
+                continueFieldSequence(nextFieldNode, index - 1);
             }
         }
         // delete the data field topic including all of its (sequence) relations
@@ -157,7 +152,29 @@ class Neo4jTopicType extends TopicType {
         super.removeDataField(uri);
     }
 
+    @Override
+    public void setDataFieldOrder(List uris) {
+        // 1) update memory
+        super.setDataFieldOrder(uris);
+        // 2) update DB
+        // delete sequence
+        String typeUri = (String) getProperty("http://www.deepamehta.de/core/property/TypeURI");
+        deleteFieldSequence(typeUri);
+        // re-create sequence
+        for (int i = 0; i < dataFields.size(); i++) {
+            putInFieldSequence(getDataField(i).node, i);
+        }
+    }
+
     // ------------------------------------------------------------------------------------------------- Private Methods
+
+    private void putInFieldSequence(Node fieldNode, int index) {
+        if (index == 0) {
+            startFieldSequence(fieldNode);
+        } else {
+            continueFieldSequence(fieldNode, index - 1);
+        }
+    }
 
     private void startFieldSequence(Node fieldNode) {
         Relationship rel = typeNode.createRelationshipTo(fieldNode, Neo4jStorage.RelType.SEQUENCE_START);
@@ -165,21 +182,33 @@ class Neo4jTopicType extends TopicType {
         rel.setProperty("type_uri", typeUri);
     }
 
-    private void addToFieldSequence(Node fieldNode, int prevFieldIndex) {
+    private void continueFieldSequence(Node fieldNode, int prevFieldIndex) {
         Node prevFieldNode = getDataField(prevFieldIndex).node;
         Relationship rel = prevFieldNode.createRelationshipTo(fieldNode, Neo4jStorage.RelType.SEQUENCE);
         String typeUri = (String) properties.get("http://www.deepamehta.de/core/property/TypeURI");
         rel.setProperty("type_uri", typeUri);
     }
 
+    // ---
+
     private void reassignFieldSequence(String oldTypeUri, String typeUri) {
         logger.info("### Re-assigning data field sequence from type \"" + oldTypeUri + "\" to \"" + typeUri + "\"");
         int count = 0;
-        for (Position pos : getNodeSequence(oldTypeUri)) {
+        for (Position pos : getFieldSequence(oldTypeUri)) {
             pos.lastRelationship().setProperty("type_uri", typeUri);
             count++;
         }
         logger.info("### " + count + " data fields re-assigned");
+    }
+
+    private void deleteFieldSequence(String typeUri) {
+        logger.info("### Deleting data field sequence of type \"" + typeUri + "\"");
+        int count = 0;
+        for (Position pos : getFieldSequence(typeUri)) {
+            pos.lastRelationship().delete();
+            count++;
+        }
+        logger.info("### " + count + " relations deleted");
     }
 
     // ---
@@ -196,7 +225,7 @@ class Neo4jTopicType extends TopicType {
         }
         //
         List dataFields = new ArrayList();
-        for (Position pos : getNodeSequence(typeUri)) {
+        for (Position pos : getFieldSequence(typeUri)) {
             Node fieldNode = pos.node();
             logger.fine("  # Result " + fieldNode);
             // error check
@@ -216,7 +245,7 @@ class Neo4jTopicType extends TopicType {
         return dataFields;
     }
 
-    private Iterable<Position> getNodeSequence(String typeUri) {
+    private Iterable<Position> getFieldSequence(String typeUri) {
         TraversalDescription desc = TraversalFactory.createTraversalDescription();
         desc = desc.relationships(Neo4jStorage.RelType.SEQUENCE_START, Direction.OUTGOING);
         desc = desc.relationships(Neo4jStorage.RelType.SEQUENCE,       Direction.OUTGOING);

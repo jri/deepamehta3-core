@@ -87,6 +87,8 @@ public interface Storage {
 
     public void removeDataField(String typeUri, String fieldUri);
 
+    public void setDataFieldOrder(String typeUri, List fieldUris);
+
     // --- DB ---
 
     public Transaction beginTx();

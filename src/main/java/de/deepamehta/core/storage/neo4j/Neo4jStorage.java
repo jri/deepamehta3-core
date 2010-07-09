@@ -285,6 +285,11 @@ public class Neo4jStorage implements Storage {
         getTopicType(typeUri).removeDataField(fieldUri);
     }
 
+    @Override
+    public void setDataFieldOrder(String typeUri, List fieldUris) {
+        getTopicType(typeUri).setDataFieldOrder(fieldUris);
+    }
+
     // --- DB ---
 
     @Override
