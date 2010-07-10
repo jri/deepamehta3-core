@@ -6,13 +6,14 @@ import de.deepamehta.core.model.TopicType;
 import org.neo4j.helpers.Predicate;
 import org.neo4j.graphdb.Node;
 import org.neo4j.graphdb.Direction;
+import org.neo4j.graphdb.Path;
 import org.neo4j.graphdb.Relationship;
-import org.neo4j.graphdb.traversal.Position;
+// import org.neo4j.graphdb.traversal.Position;
 import org.neo4j.graphdb.traversal.PruneEvaluator;
 import org.neo4j.graphdb.traversal.TraversalDescription;
 import org.neo4j.graphdb.traversal.Traverser;
 import org.neo4j.graphdb.traversal.Uniqueness;
-import org.neo4j.kernel.TraversalFactory;
+import org.neo4j.kernel.Traversal;
 import org.neo4j.meta.model.MetaModelClass;
 import org.neo4j.meta.model.MetaModelProperty;
 
@@ -194,8 +195,8 @@ class Neo4jTopicType extends TopicType {
     private void reassignFieldSequence(String oldTypeUri, String typeUri) {
         logger.info("### Re-assigning data field sequence from type \"" + oldTypeUri + "\" to \"" + typeUri + "\"");
         int count = 0;
-        for (Position pos : getFieldSequence(oldTypeUri)) {
-            pos.lastRelationship().setProperty("type_uri", typeUri);
+        for (Path path : getFieldSequence(oldTypeUri)) {
+            path.lastRelationship().setProperty("type_uri", typeUri);
             count++;
         }
         logger.info("### " + count + " data fields re-assigned");
@@ -204,8 +205,8 @@ class Neo4jTopicType extends TopicType {
     private void deleteFieldSequence(String typeUri) {
         logger.info("### Deleting data field sequence of type \"" + typeUri + "\"");
         int count = 0;
-        for (Position pos : getFieldSequence(typeUri)) {
-            pos.lastRelationship().delete();
+        for (Path path : getFieldSequence(typeUri)) {
+            path.lastRelationship().delete();
             count++;
         }
         logger.info("### " + count + " relations deleted");
@@ -225,8 +226,8 @@ class Neo4jTopicType extends TopicType {
         }
         //
         List dataFields = new ArrayList();
-        for (Position pos : getFieldSequence(typeUri)) {
-            Node fieldNode = pos.node();
+        for (Path path : getFieldSequence(typeUri)) {
+            Node fieldNode = path.endNode();
             logger.fine("  # Result " + fieldNode);
             // error check
             if (!propNodes.contains(fieldNode)) {
@@ -245,8 +246,8 @@ class Neo4jTopicType extends TopicType {
         return dataFields;
     }
 
-    private Iterable<Position> getFieldSequence(String typeUri) {
-        TraversalDescription desc = TraversalFactory.createTraversalDescription();
+    private Iterable<Path> getFieldSequence(String typeUri) {
+        TraversalDescription desc = Traversal.description();
         desc = desc.relationships(Neo4jStorage.RelType.SEQUENCE_START, Direction.OUTGOING);
         desc = desc.relationships(Neo4jStorage.RelType.SEQUENCE,       Direction.OUTGOING);
         // A custom filter is used to return only the nodes of this topic type's individual path.
@@ -273,10 +274,9 @@ class Neo4jTopicType extends TopicType {
 
         @Override
         public boolean accept(Object item) {
-            Position position = (Position) item;
-            boolean doReturn = !position.atStartNode() &&
-                                position.lastRelationship().getProperty("type_uri").equals(typeUri);
-            logger.fine("### " + position.node() + " " + position.lastRelationship() + " => return=" + doReturn);
+            Path path = (Path) item;
+            boolean doReturn = path.length() > 0 && path.lastRelationship().getProperty("type_uri").equals(typeUri);
+            logger.fine("### " + path.endNode() + " " + path.lastRelationship() + " => return=" + doReturn);
             return doReturn;
         }
     }

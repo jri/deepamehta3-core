@@ -7,20 +7,27 @@ import de.deepamehta.core.model.RelatedTopic;
 import de.deepamehta.core.model.Relation;
 import de.deepamehta.core.storage.Storage;
 
-import org.neo4j.helpers.Predicate;
 import org.neo4j.graphdb.Direction;
 import org.neo4j.graphdb.DynamicRelationshipType;
 import org.neo4j.graphdb.GraphDatabaseService;
 import org.neo4j.graphdb.Node;
+import org.neo4j.graphdb.Path;
 import org.neo4j.graphdb.PropertyContainer;
 import org.neo4j.graphdb.Relationship;
 import org.neo4j.graphdb.RelationshipType;
-import org.neo4j.graphdb.traversal.Position;
+import org.neo4j.graphdb.ReturnableEvaluator;
+import org.neo4j.graphdb.StopEvaluator;
+import org.neo4j.graphdb.TraversalPosition;
+// import org.neo4j.graphdb.Traverser;
+import org.neo4j.graphdb.Traverser.Order;
+// import org.neo4j.graphdb.traversal.Position;
 import org.neo4j.graphdb.traversal.PruneEvaluator;
 import org.neo4j.graphdb.traversal.TraversalDescription;
 import org.neo4j.graphdb.traversal.Traverser;
+import org.neo4j.helpers.Predicate;
 import org.neo4j.kernel.EmbeddedGraphDatabase;
-import org.neo4j.kernel.TraversalFactory;
+import org.neo4j.kernel.Traversal;
+// import org.neo4j.kernel.TraversalFactory;
 import org.neo4j.index.IndexHits;
 import org.neo4j.index.IndexService;
 import org.neo4j.index.lucene.LuceneIndexService;
@@ -123,19 +130,21 @@ public class Neo4jStorage implements Storage {
         // being exposed to the user (additionally, getTypeNode() would fail on these nodes).
         excludeRelTypes.add("META_CLASS;OUTGOING");
         excludeRelTypes.add("META_HAS_PROPERTY;INCOMING");
-        TraversalDescription desc = createRelatedTopicsTraversalDescription(includeTopicTypes,
-                                                                            includeRelTypes,
-                                                                            excludeRelTypes);
-        List relTopics = new ArrayList();
         Node startNode = graphDb.getNodeById(topicId);
-        for (Position pos : desc.traverse(startNode)) {
+        Traverser traverser = createRelatedTopicsTraverser(startNode, includeTopicTypes,
+                                                                      includeRelTypes, excludeRelTypes);
+        List relTopics = new ArrayList();
+        for (Path path : traverser) {
+            Node node = path.endNode();
+            Relationship relation = path.lastRelationship();
+            //
             RelatedTopic relTopic = new RelatedTopic();
             // Note: the topic properties remain uninitialzed here.
             // It is up to the plugins to provide selected properties (see providePropertiesHook()).
-            relTopic.setTopic(buildTopic(pos.node(), false));
+            relTopic.setTopic(buildTopic(node, false));
             // Note: the relation properties remain uninitialzed here.
             // It is up to the plugins to provide selected properties (see providePropertiesHook()).
-            relTopic.setRelation(buildRelation(pos.lastRelationship(), false));
+            relTopic.setRelation(buildRelation(relation, false));
             //
             relTopics.add(relTopic);
         }
@@ -457,27 +466,23 @@ public class Neo4jStorage implements Storage {
     }
 
     private Node getTypeNode(Node node) {
+        // Old Neo4j API:
         // TraversalDescription desc = TraversalFactory.createTraversalDescription();
         // desc = desc.relationships(MetaModelRelTypes.META_HAS_INSTANCE, Direction.INCOMING);
         // desc = desc.filter(ReturnFilter.ALL_BUT_START_NODE);
         // Iterator<Node> i = desc.traverse(node).nodes().iterator();
         //
-        Iterator<Node> i = node.expand(MetaModelRelTypes.META_HAS_INSTANCE, Direction.INCOMING).nodes().iterator();
+        // Old Neo4j API:
+        // Iterator<Node> i = node.expand(MetaModelRelTypes.META_HAS_INSTANCE, Direction.INCOMING).nodes().iterator();
         //
-        // error check 1
-        if (!i.hasNext()) {
+        Relationship relation = node.getSingleRelationship(MetaModelRelTypes.META_HAS_INSTANCE, Direction.INCOMING);
+        // error check
+        if (relation == null) {
             throw new RuntimeException("Type of " + node + " is unknown " +
                 "(there is no incoming META_HAS_INSTANCE relationship)");
         }
         //
-        Node type = i.next();
-        // error check 2
-        if (i.hasNext()) {
-            throw new RuntimeException("Type of " + node + " is ambiguous " +
-                "(there are more than one incoming META_HAS_INSTANCE relationships)");
-        }
-        //
-        return type;
+        return relation.getOtherNode(node);
     }
 
     // ---
@@ -532,15 +537,21 @@ public class Neo4jStorage implements Storage {
 
     // --- Traversal ---
 
-    private TraversalDescription createRelatedTopicsTraversalDescription(List<String> includeTopicTypes,
-                                                                         List<String> includeRelTypes,
-                                                                         List<String> excludeRelTypes) {
-        TraversalDescription desc = TraversalFactory.createTraversalDescription();
+    private Traverser createRelatedTopicsTraverser(Node node, List<String> includeTopicTypes,
+                                                              List<String> includeRelTypes,
+                                                              List<String> excludeRelTypes) {
+        // Doesn't work. Throws IllegalArgumentException if no relationship types are passed.
+        //
+        // return node.traverse(Order.BREADTH_FIRST, StopEvaluator.DEPTH_ONE,
+        //     new RelatedTopicsFilter(includeTopicTypes, includeRelTypes, excludeRelTypes));
+        //
+        TraversalDescription desc = Traversal.description();
         desc = desc.filter(new RelatedTopicsFilter(includeTopicTypes, includeRelTypes, excludeRelTypes));
         desc = desc.prune(new DepthOnePruneEvaluator());
-        return desc;
+        return desc.traverse(node);
     }
 
+    // private class RelatedTopicsFilter implements ReturnableEvaluator {
     private class RelatedTopicsFilter implements Predicate {
 
         private List<String> includeTopicTypes;
@@ -557,16 +568,16 @@ public class Neo4jStorage implements Storage {
         }
 
         @Override
-        public boolean accept(Object item) {
-            Position position = (Position) item;
-            if (position.atStartNode()) {
+        public boolean accept(Object item) {                // boolean isReturnableNode(TraversalPosition position) {
+            Path path = (Path) item;
+            if (path.length() == 0) {                       // if (position.isStartNode()) {
                 return false;
             }
             // Note: we must apply the relation type filter first in order to sort out the meta-model's namespace and
             // property nodes before the topic type filter would see them (getTypeUri() would fail on these nodes).
-            Node node = position.node();
+            Node node = path.endNode();                     // Node node = position.currentNode();
             // 1) apply relation type filter
-            Relationship rel = position.lastRelationship();
+            Relationship rel = path.lastRelationship();     // Relationship rel = position.lastRelationshipTraversed();
             String relTypeName = rel.getType().name();
             // apply include filter
             if (!includeRelTypes.isEmpty()) {
@@ -627,8 +638,8 @@ public class Neo4jStorage implements Storage {
     private class DepthOnePruneEvaluator implements PruneEvaluator {
 
         @Override
-        public boolean pruneAfter(Position position) {
-            return position.depth() == 1;
+        public boolean pruneAfter(Path path) {      // boolean pruneAfter(Position position) {
+            return path.length() == 1;              // return position.depth() == 1;
         }
     }
 }
