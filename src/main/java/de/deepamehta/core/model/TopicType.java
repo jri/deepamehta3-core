@@ -29,18 +29,18 @@ public class TopicType extends Topic {
 
     public TopicType(Map properties, List dataFields) {
         // id and label remain uninitialized
-        super(-1, "http://www.deepamehta.de/core/topictype/TopicType", null, properties);
+        super(-1, "de/deepamehta/core/topictype/TopicType", null, properties);
         this.dataFields = dataFields;
     }
 
     public TopicType(JSONObject type) {
         // id, label, and properties remain uninitialized
-        super(-1, "http://www.deepamehta.de/core/topictype/TopicType", null, null);
+        super(-1, "de/deepamehta/core/topictype/TopicType", null, null);
         try {
             // initialize properties
-            setProperty("http://www.deepamehta.de/core/property/TypeURI", type.getString("uri"));
+            setProperty("de/deepamehta/core/property/TypeURI", type.getString("uri"));
             JSONObject view = type.getJSONObject("view");
-            setProperty("http://www.deepamehta.de/core/property/TypeName", view.getString("label"));
+            setProperty("de/deepamehta/core/property/TypeName", view.getString("label"));
             if (view.has("icon_src")) {
                 setProperty("icon_src", view.getString("icon_src"));
             }
@@ -57,7 +57,7 @@ public class TopicType extends Topic {
         } catch (Throwable e) {
             e.printStackTrace();    // FIXME: to be dropped
             throw new RuntimeException("Error while parsing topic type \"" +
-                getProperty("http://www.deepamehta.de/core/property/TypeURI") + "\"", e);
+                getProperty("de/deepamehta/core/property/TypeURI") + "\"", e);
         }
     }
 
@@ -68,7 +68,7 @@ public class TopicType extends Topic {
         JSONObject o = new JSONObject();
         o.put("id", id);                // "derived" from Topic
         o.put("type_uri", typeUri);     // "derived" from Topic
-        o.put("uri", getProperty("http://www.deepamehta.de/core/property/TypeURI"));
+        o.put("uri", getProperty("de/deepamehta/core/property/TypeURI"));
         //
         JSONArray fields = new JSONArray();
         for (DataField dataField : dataFields) {
@@ -77,7 +77,7 @@ public class TopicType extends Topic {
         o.put("fields", fields);
         //
         JSONObject view = new JSONObject();
-        view.put("label", getProperty("http://www.deepamehta.de/core/property/TypeName", null));
+        view.put("label", getProperty("de/deepamehta/core/property/TypeName", null));
         view.put("icon_src", getProperty("icon_src", null));
         view.put("label_field", getProperty("label_field", null));
         o.put("view", view);
@@ -89,11 +89,11 @@ public class TopicType extends Topic {
     // ---
 
     public void setTypeUri(String typeUri) {
-        setProperty("http://www.deepamehta.de/core/property/TypeURI", typeUri);
+        setProperty("de/deepamehta/core/property/TypeURI", typeUri);
     }
 
     public void setLabel(String label) {
-        setProperty("http://www.deepamehta.de/core/property/TypeName", label);
+        setProperty("de/deepamehta/core/property/TypeName", label);
     }
 
     // ---
@@ -112,7 +112,7 @@ public class TopicType extends Topic {
                 return dataField;
             }
         }
-        throw new RuntimeException("Topic type \"" + getProperty("http://www.deepamehta.de/core/property/TypeName") +
+        throw new RuntimeException("Topic type \"" + getProperty("de/deepamehta/core/property/TypeName") +
             "\" has no data field \"" + uri + "\"");
     }
 

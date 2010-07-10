@@ -34,7 +34,7 @@ public class TypeCache {
     }
 
     public void put(TopicType topicType) {
-        String typeUri = (String) topicType.getProperty("http://www.deepamehta.de/core/property/TypeURI");
+        String typeUri = (String) topicType.getProperty("de/deepamehta/core/property/TypeURI");
         topicTypes.put(typeUri, topicType);
     }
 

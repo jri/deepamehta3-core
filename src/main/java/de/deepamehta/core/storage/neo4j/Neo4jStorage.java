@@ -156,7 +156,7 @@ public class Neo4jStorage implements Storage {
             //
             // TODO: drop this filter. Items not intended for being find should not be indexed at all. Model change
             // required: the indexing mode must be specified per topic type/data field pair instead per data field.
-            if (!getTypeUri(node).equals("http://www.deepamehta.de/core/topictype/SearchResult")) {
+            if (!getTypeUri(node).equals("de/deepamehta/core/topictype/SearchResult")) {
                 // FIXME: type, label, and properties remain uninitialized
                 result.add(new Topic(node.getId(), null, null, null));
             }
@@ -427,7 +427,7 @@ public class Neo4jStorage implements Storage {
 
     private void indexProperty(Node node, String key, Object value, String typeUri) {
         // Note: we only index instance nodes. Meta nodes (types) are responsible for indexing themself.
-        if (!typeUri.equals("http://www.deepamehta.de/core/topictype/TopicType")) {
+        if (!typeUri.equals("de/deepamehta/core/topictype/TopicType")) {
             DataField dataField = getTopicType(typeUri).getDataField(key);
             String indexingMode = dataField.indexingMode;
             if (indexingMode.equals("OFF")) {
@@ -449,11 +449,11 @@ public class Neo4jStorage implements Storage {
 
     private String getTypeUri(Node node) {
         // FIXME: meta-types must be detected manually
-        if (node.getProperty("http://www.deepamehta.de/core/property/TypeURI", null) != null) {
+        if (node.getProperty("de/deepamehta/core/property/TypeURI", null) != null) {
             // FIXME: a more elaborated criteria is required, e.g. an incoming TOPIC_TYPE relation
-            return "http://www.deepamehta.de/core/topictype/TopicType";
+            return "de/deepamehta/core/topictype/TopicType";
         }
-        return (String) getTypeNode(node).getProperty("http://www.deepamehta.de/core/property/TypeURI");
+        return (String) getTypeNode(node).getProperty("de/deepamehta/core/property/TypeURI");
     }
 
     private Node getTypeNode(Node node) {

@@ -49,7 +49,7 @@ class Neo4jTopicType extends TopicType {
         super(properties, new ArrayList());
         // 2) update DB
         // create type
-        String typeUri = (String) properties.get("http://www.deepamehta.de/core/property/TypeURI");
+        String typeUri = (String) properties.get("de/deepamehta/core/property/TypeURI");
         this.storage = storage;
         this.metaClass = storage.createMetaClass(typeUri);
         this.typeNode = metaClass.node();
@@ -82,13 +82,13 @@ class Neo4jTopicType extends TopicType {
 
     @Override
     public void setTypeUri(String typeUri) {
-        String oldTypeUri = (String) getProperty("http://www.deepamehta.de/core/property/TypeURI");
+        String oldTypeUri = (String) getProperty("de/deepamehta/core/property/TypeURI");
         // 1) update memory
         storage.typeCache.remove(oldTypeUri);
         super.setTypeUri(typeUri);
         storage.typeCache.put(this);
         // 2) update DB
-        typeNode.setProperty("http://www.deepamehta.de/core/property/TypeURI", typeUri);
+        typeNode.setProperty("de/deepamehta/core/property/TypeURI", typeUri);
         storage.namespace.rename(oldTypeUri, typeUri);
         // reassign data field sequence to new URI
         reassignFieldSequence(oldTypeUri, typeUri);
@@ -112,7 +112,7 @@ class Neo4jTopicType extends TopicType {
     @Override
     public void addDataField(DataField dataField) {
         // 1) update DB
-        String typeUri = (String) properties.get("http://www.deepamehta.de/core/property/TypeURI");
+        String typeUri = (String) properties.get("de/deepamehta/core/property/TypeURI");
         // create data field
         Neo4jDataField field = new Neo4jDataField(dataField, storage);
         storage.getMetaClass(typeUri).getDirectProperties().add(field.getMetaProperty());
@@ -158,7 +158,7 @@ class Neo4jTopicType extends TopicType {
         super.setDataFieldOrder(uris);
         // 2) update DB
         // delete sequence
-        String typeUri = (String) getProperty("http://www.deepamehta.de/core/property/TypeURI");
+        String typeUri = (String) getProperty("de/deepamehta/core/property/TypeURI");
         deleteFieldSequence(typeUri);
         // re-create sequence
         for (int i = 0; i < dataFields.size(); i++) {
@@ -178,14 +178,14 @@ class Neo4jTopicType extends TopicType {
 
     private void startFieldSequence(Node fieldNode) {
         Relationship rel = typeNode.createRelationshipTo(fieldNode, Neo4jStorage.RelType.SEQUENCE_START);
-        String typeUri = (String) properties.get("http://www.deepamehta.de/core/property/TypeURI");
+        String typeUri = (String) properties.get("de/deepamehta/core/property/TypeURI");
         rel.setProperty("type_uri", typeUri);
     }
 
     private void continueFieldSequence(Node fieldNode, int prevFieldIndex) {
         Node prevFieldNode = getDataField(prevFieldIndex).node;
         Relationship rel = prevFieldNode.createRelationshipTo(fieldNode, Neo4jStorage.RelType.SEQUENCE);
-        String typeUri = (String) properties.get("http://www.deepamehta.de/core/property/TypeURI");
+        String typeUri = (String) properties.get("de/deepamehta/core/property/TypeURI");
         rel.setProperty("type_uri", typeUri);
     }
 
@@ -217,7 +217,7 @@ class Neo4jTopicType extends TopicType {
      * Reads the data fields of this topic type from the database.
      */
     private List<DataField> readDataFields() {
-        String typeUri = (String) properties.get("http://www.deepamehta.de/core/property/TypeURI");
+        String typeUri = (String) properties.get("de/deepamehta/core/property/TypeURI");
         // use as control group
         List propNodes = new ArrayList();
         for (MetaModelProperty metaProp : storage.getMetaClass(typeUri).getDirectProperties()) {

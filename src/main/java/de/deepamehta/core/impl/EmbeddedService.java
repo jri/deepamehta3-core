@@ -231,8 +231,8 @@ public class EmbeddedService implements DeepaMehtaService {
             List<Topic> searchResult = storage.searchTopics(searchTerm, fieldUri, wholeWord);
             // create result topic (a bucket)
             Map properties = new HashMap();
-            properties.put("http://www.deepamehta.de/core/property/SearchTerm", searchTerm);
-            resultTopic = createTopic("http://www.deepamehta.de/core/topictype/SearchResult",
+            properties.put("de/deepamehta/core/property/SearchTerm", searchTerm);
+            resultTopic = createTopic("de/deepamehta/core/topictype/SearchResult",
                 properties, clientContext);
             // associate result topics
             logger.fine("Relating " + searchResult.size() + " result topics");
@@ -489,7 +489,7 @@ public class EmbeddedService implements DeepaMehtaService {
         } catch (Throwable e) {
             logger.warning("ROLLBACK!");
             ex = new RuntimeException("Topic type \"" +
-                properties.get("http://www.deepamehta.de/core/property/TypeURI") + "\" can't be created", e);
+                properties.get("de/deepamehta/core/property/TypeURI") + "\" can't be created", e);
         } finally {
             tx.finish();
             if (ex == null) {
@@ -667,7 +667,7 @@ public class EmbeddedService implements DeepaMehtaService {
 
     private void updatePluginDbModelVersion(Plugin plugin, int dbModelVersion) {
         Map properties = new HashMap();
-        properties.put("http://www.deepamehta.de/core/property/DBModelVersion", dbModelVersion);
+        properties.put("de/deepamehta/core/property/DBModelVersion", dbModelVersion);
         setTopicProperties(plugin.getPluginTopic().id, properties);
     }
 
