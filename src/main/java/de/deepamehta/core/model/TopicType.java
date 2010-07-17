@@ -8,6 +8,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.logging.Logger;
 
 
 
@@ -24,6 +25,8 @@ public class TopicType extends Topic {
     // ---------------------------------------------------------------------------------------------- Instance Variables
 
     protected List<DataField> dataFields;
+
+    private Logger logger = Logger.getLogger(getClass().getName());
 
     // ---------------------------------------------------------------------------------------------------- Constructors
 
@@ -134,6 +137,7 @@ public class TopicType extends Topic {
     }
 
     public void setDataFieldOrder(List<String> uris) {
+        logger.info("### uris=" + uris);
         //
         if (uris.size() != dataFields.size()) {
             throw new RuntimeException("There are " + dataFields.size() + " data fields " +

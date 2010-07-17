@@ -130,6 +130,7 @@ public class Neo4jStorage implements Storage {
         // being exposed to the user (additionally, getTypeNode() would fail on these nodes).
         excludeRelTypes.add("META_CLASS;OUTGOING");
         excludeRelTypes.add("META_HAS_PROPERTY;INCOMING");
+        excludeRelTypes.add("SEQUENCE_START;INCOMING");
         Node startNode = graphDb.getNodeById(topicId);
         Traverser traverser = createRelatedTopicsTraverser(startNode, includeTopicTypes,
                                                                       includeRelTypes, excludeRelTypes);
