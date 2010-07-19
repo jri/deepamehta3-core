@@ -509,7 +509,7 @@ public class EmbeddedService implements DeepaMehtaService {
             tx.success();
         } catch (Throwable e) {
             logger.warning("ROLLBACK!");
-            ex = new RuntimeException("Data field \"" + dataField.uri + "\" can't be added to topic type \"" +
+            ex = new RuntimeException("Data field \"" + dataField.getUri() + "\" can't be added to topic type \"" +
                 typeUri + "\"", e);
         } finally {
             tx.finish();
@@ -528,7 +528,7 @@ public class EmbeddedService implements DeepaMehtaService {
             tx.success();
         } catch (Throwable e) {
             logger.warning("ROLLBACK!");
-            ex = new RuntimeException("Data field \"" + dataField.uri + "\" of topic type \"" +
+            ex = new RuntimeException("Data field \"" + dataField.getUri() + "\" of topic type \"" +
                 typeUri + "\" can't be updated", e);
         } finally {
             tx.finish();
@@ -647,8 +647,8 @@ public class EmbeddedService implements DeepaMehtaService {
             properties = new HashMap();
         }
         for (DataField dataField : getTopicType(typeUri).getDataFields()) {
-            if (!dataField.dataType.equals("relation") && properties.get(dataField.uri) == null) {
-                properties.put(dataField.uri, "");
+            if (!dataField.getDataType().equals("relation") && properties.get(dataField.getUri()) == null) {
+                properties.put(dataField.getUri(), "");
             }
         }
         return properties;

@@ -15,7 +15,10 @@ import java.util.Map;
 public class JSONHelper {
 
     public static Map toMap(JSONObject o) throws JSONException {
-        Map map = new HashMap();
+        return toMap(o, new HashMap());
+    }
+
+    public static Map toMap(JSONObject o, Map map) throws JSONException {
         Iterator<String> i = o.keys();
         while (i.hasNext()) {
             String key = i.next();

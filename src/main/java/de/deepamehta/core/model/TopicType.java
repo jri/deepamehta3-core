@@ -111,7 +111,7 @@ public class TopicType extends Topic {
 
     public DataField getDataField(String uri) {
         for (DataField dataField : dataFields) {
-            if (dataField.uri.equals(uri)) {
+            if (dataField.getUri().equals(uri)) {
                 return dataField;
             }
         }

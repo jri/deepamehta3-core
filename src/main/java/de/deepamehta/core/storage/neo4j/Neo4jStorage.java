@@ -287,7 +287,7 @@ public class Neo4jStorage implements Storage {
 
     @Override
     public void updateDataField(String typeUri, DataField dataField) {
-        getTopicType(typeUri).getDataField(dataField.uri).update(dataField.getProperties());
+        getTopicType(typeUri).getDataField(dataField.getUri()).setProperties(dataField.getProperties());
     }
 
     @Override
@@ -375,7 +375,7 @@ public class Neo4jStorage implements Storage {
             throw new RuntimeException("not yet implemented");
         } else {
             if (topicType.getDataFields().size() > 0) {
-                String fieldUri = topicType.getDataField(0).uri;
+                String fieldUri = topicType.getDataField(0).getUri();
                 label = node.getProperty(fieldUri).toString();   // Note: property value can be a number as well
             } else {
                 // there are no properties -> the label can't be set
@@ -439,7 +439,7 @@ public class Neo4jStorage implements Storage {
         // Note: we only index instance nodes. Meta nodes (types) are responsible for indexing themself.
         if (!typeUri.equals("de/deepamehta/core/topictype/TopicType")) {
             DataField dataField = getTopicType(typeUri).getDataField(key);
-            String indexingMode = dataField.indexingMode;
+            String indexingMode = dataField.getIndexingMode();
             if (indexingMode.equals("OFF")) {
                 return;
             } else if (indexingMode.equals("KEY")) {

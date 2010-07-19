@@ -1,11 +1,14 @@
 package de.deepamehta.core.model;
 
+import de.deepamehta.core.util.JSONHelper;
+
 import org.codehaus.jettison.json.JSONObject;
 import org.codehaus.jettison.json.JSONArray;
 import org.codehaus.jettison.json.JSONException;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.logging.Logger;
 
 
 
@@ -21,157 +24,177 @@ import java.util.Map;
  */
 public class DataField {
     
+    // ------------------------------------------------------------------------------------------------ Static Variables
+
+    private static final String KEY_URI = "uri";
+    private static final String KEY_LABEL = "label";
+    private static final String KEY_DATA_TYPE = "data_type";
+    private static final String KEY_RELATED_TYPE_URI = "related_type_uri";
+    private static final String KEY_INDEXING_MODE = "indexing_mode";
+    private static final String KEY_EDITOR = "editor";
+    private static final String KEY_RENDERER_CLASS = "renderer_class";
+
+    private static final Map<String, String> DEFAULT_RENDERERS = new HashMap();
+    static {
+        DEFAULT_RENDERERS.put("text", "TextFieldRenderer");
+        DEFAULT_RENDERERS.put("number", "NumberFieldRenderer");
+        DEFAULT_RENDERERS.put("date", "DateFieldRenderer");
+        DEFAULT_RENDERERS.put("html", "HTMLFieldRenderer");
+        DEFAULT_RENDERERS.put("relation", "ReferenceFieldRenderer");
+    }
+
     // ---------------------------------------------------------------------------------------------- Instance Variables
 
-    public String uri;
-    public String dataType;
-    public String relatedTypeUri;    // used for dataType="relation" fields
-    public String label;
-    public String editor;
-    public String indexingMode;
+    private Map<String, Object> properties = new HashMap();
+
+    private Logger logger = Logger.getLogger(getClass().getName());
 
     // ---------------------------------------------------------------------------------------------------- Constructors
 
-    public DataField() {
-        setDataType("text");
-        setEditor("single line");
-        setIndexingMode("OFF");
-    }
-
-    public DataField(String label) {
-        this();
+    public DataField(String label, String dataType) {
         setLabel(label);
+        setDataType(dataType);
+        setDefaults();
     }
 
     public DataField(Map properties) {
-        init(properties);
+        this.properties = properties;
+        setDefaults();
     }
 
     public DataField(JSONObject dataField) {
-        this();
         try {
-            setUri(dataField.getString("uri"));
-            // parse "model"
-            if (dataField.has("model")) {
-                JSONObject model = dataField.getJSONObject("model");
-                if (model.has("type")) {
-                    setDataType(model.getString("type"));
-                }
-                if (dataType.equals("relation")) {
-                    setRelatedTypeUri(model.getString("related_type_uri"));
-                }
-            }
-            // parse "view"
-            JSONObject view = dataField.getJSONObject("view");
-            setLabel(view.getString("label"));
-            if (view.has("editor")) {
-                setEditor(view.getString("editor"));
-            }
-            // parse "indexing_mode"
-            if (dataField.has("indexing_mode")) {
-                setIndexingMode(dataField.getString("indexing_mode"));
-            }
+            JSONHelper.toMap(dataField, properties);
+            setDefaults();
         } catch (Throwable e) {
-            throw new RuntimeException("Error while parsing data field \"" + uri + "\"", e);
+            throw new RuntimeException("Error while parsing " + this, e);
         }
-    }
-
-    // -------------------------------------------------------------------------------------------------- Public Methods
-
-    public JSONObject toJSON() throws JSONException {
-        JSONObject o = new JSONObject();
-        o.put("uri", uri);
-        //
-        JSONObject model = new JSONObject();
-        model.put("type", dataType);
-        if (dataType.equals("relation")) {
-            model.put("related_type_uri", relatedTypeUri);
-        }
-        o.put("model", model);
-        //
-        JSONObject view = new JSONObject();
-        view.put("label", label);
-        view.put("editor", editor);
-        o.put("view", view);
-        //
-        o.put("indexing_mode", indexingMode);
-        return o;
-    }
-
-    public Map<String, String> getProperties() {
-        Map<String, String> properties = new HashMap();
-        properties.put("uri", uri);
-        properties.put("data_type", dataType);
-        if (dataType.equals("relation")) {
-            properties.put("related_type_uri", relatedTypeUri);
-        }
-        properties.put("label", label);
-        properties.put("editor", editor);
-        properties.put("indexing_mode", indexingMode);
-        return properties;
-    }
-
-    public void update(Map<String, String> properties) {
-        init(properties);
     }
 
     // ---
 
-    public DataField setUri(String uri) {
-        this.uri = uri;
-        return this;
+    protected DataField() {
+    }
+
+    // -------------------------------------------------------------------------------------------------- Public Methods
+
+    public Object getProperty(String key) {
+        return properties.get(key);
+    }
+
+    public Map<String, Object> getProperties() {
+        return properties;
+    }
+
+    // ---
+
+    public void setProperty(String key, Object value) {
+        properties.put(key, value);
+    }
+
+    public void setProperties(Map<String, Object> properties) {
+        this.properties = properties;
+        setDefaults();
+    }
+
+    // ---
+
+    public String getUri() {
+        return (String) getProperty(KEY_URI);
+    }
+
+    public String getDataType() {
+        return (String) getProperty(KEY_DATA_TYPE);
+    }
+
+    public String getEditor() {
+        return (String) getProperty(KEY_EDITOR);
+    }
+
+    public String getIndexingMode() {
+        return (String) getProperty(KEY_INDEXING_MODE);
+    }
+
+    public String getRendererClass() {
+        return (String) getProperty(KEY_RENDERER_CLASS);
+    }
+
+    // ---
+
+    public void setUri(String uri) {
+        setProperty(KEY_URI, uri);
     }
 
     // "text" (default) / "number" / "date" / "html" / "relation"
-    public DataField setDataType(String dataType) {
-        this.dataType = dataType;
-        return this;
+    public void setDataType(String dataType) {
+        setProperty(KEY_DATA_TYPE, dataType);
     }
 
     // used for dataType="relation" fields
-    public DataField setRelatedTypeUri(String relatedTypeUri) {
-        this.relatedTypeUri = relatedTypeUri;
-        return this;
+    public void setRelatedTypeUri(String relatedTypeUri) {
+        setProperty(KEY_RELATED_TYPE_URI, relatedTypeUri);
     }
 
-    public DataField setLabel(String label) {
-        this.label = label;
-        return this;
+    public void setLabel(String label) {
+        setProperty(KEY_LABEL, label);
     }
 
     // "single line" (default) / "multi line"
-    public DataField setEditor(String editor) {
-        this.editor = editor;
-        return this;
+    public void setEditor(String editor) {
+        setProperty(KEY_EDITOR, editor);
     }
 
     // "OFF" (default) / "KEY" / "FULLTEXT" / "FULLTEXT_KEY"
-    public DataField setIndexingMode(String indexingMode) {
-        this.indexingMode = indexingMode;
-        return this;
+    public void setIndexingMode(String indexingMode) {
+        setProperty(KEY_INDEXING_MODE, indexingMode);
+    }
+
+    public void setRendererClass(String rendererClass) {
+        setProperty(KEY_RENDERER_CLASS, rendererClass);
+    }
+
+    // ---
+
+    public JSONObject toJSON() throws JSONException {
+        return new JSONObject(properties);
     }
 
     // ---
 
     @Override
     public boolean equals(Object o) {
-        return ((DataField) o).uri.equals(uri);
+        return ((DataField) o).getProperty(KEY_URI).equals(getProperty(KEY_URI));
     }
 
     @Override
     public String toString() {
-        return "data field \"" + label + "\" (uri=\"" + uri + "\" dataType=\"" + dataType + "\" relatedTypeUri=\"" +
-            relatedTypeUri + "\" editor=\"" + editor + "\" indexingMode=\"" + indexingMode + "\")";
+        return "data field \"" + getProperty(KEY_LABEL) + "\" (uri=\"" + getProperty(KEY_URI) + "\")";
     }
 
     // ------------------------------------------------------------------------------------------------- Private Methods
 
-    private void init(Map<String, String> properties) {
-        setUri(properties.get("uri"));
-        setDataType(properties.get("data_type"));
-        setRelatedTypeUri(properties.get("related_type_uri"));
-        setLabel(properties.get("label"));
-        setEditor(properties.get("editor"));
-        setIndexingMode(properties.get("indexing_mode"));
+    private void setDefaults() {
+        if (getDataType() == null) {
+            setDataType("text");
+        }
+        //
+        if (getEditor() == null) {
+            setEditor("single line");
+        }
+        //
+        if (getIndexingMode() == null) {
+            setIndexingMode("OFF");
+        }
+        //
+        if (getRendererClass() == null) {
+            String dataType = getDataType();
+            String rendererClass = DEFAULT_RENDERERS.get(dataType);
+            if (rendererClass != null) {
+                setRendererClass(rendererClass);
+            } else {
+                logger.warning("No renderer declared for " + this +
+                    " (there is no default renderer for data type \"" + dataType + "\")");
+            }
+        }
     }
 }

@@ -26,6 +26,9 @@ class Neo4jDataField extends DataField {
 
     // ---------------------------------------------------------------------------------------------------- Constructors
 
+    /**
+     * Constructs a data field from components read from the database.
+     */
     Neo4jDataField(Map properties, Node node) {
         super(properties);
         this.node = node;
@@ -35,19 +38,18 @@ class Neo4jDataField extends DataField {
      * Constructs a data field and writes it to the database.
      */
     Neo4jDataField(DataField dataField, Neo4jStorage storage) {
-        metaProperty = storage.createMetaProperty(dataField.uri);
-        node = metaProperty.node();
+        this.metaProperty = storage.createMetaProperty(dataField.getUri());
+        this.node = metaProperty.node();
         logger.info("Creating " + dataField + " => ID=" + node.getId());
-        // set properties
-        update(dataField.getProperties());
+        setProperties(dataField.getProperties());
     }
 
     // -------------------------------------------------------------------------------------------------- Public Methods
 
     @Override
-    public void update(Map<String, String> properties) {
+    public void setProperties(Map<String, Object> properties) {
         // update memory
-        super.update(properties);
+        super.setProperties(properties);
         // update DB
         for (String key : properties.keySet()) {
             node.setProperty(key, properties.get(key));
