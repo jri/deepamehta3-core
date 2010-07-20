@@ -6,6 +6,7 @@
                 label: "Title",
                 uri: "de/deepamehta/core/property/Title",
                 data_type: "text",
+                editor: "single line",
                 indexing_mode: "FULLTEXT"
             },
             {
@@ -24,7 +25,8 @@
             {
                 label: "Search Term",
                 uri: "de/deepamehta/core/property/SearchTerm",
-                data_type: "text"
+                data_type: "text",
+                editor: "single line"
             }
         ],
         view: {label: "Search Result", icon_src: "images/bucket.png"},
@@ -36,19 +38,21 @@
             {
                 label: "Type Name",
                 uri: "de/deepamehta/core/property/TypeName",
-                data_type: "text"
+                data_type: "text",
+                editor: "single line"
             },
             {
                 label: "Type URI",
                 uri: "de/deepamehta/core/property/TypeURI",
-                data_type: "text"
+                data_type: "text",
+                editor: "single line"
             },
             {
                 label: "Icon",
                 uri: "de/deepamehta/core/property/Icon",
                 data_type: "relation",
                 related_type_uri: "de/deepamehta/core/topictype/Icon",
-                editor: "iconpicker"
+                renderer_class: "IconFieldRenderer"
             },
             {
                 label: "Data Fields",
@@ -67,6 +71,7 @@
                 label: "Plugin ID",
                 uri: "de/deepamehta/core/property/PluginID",
                 data_type: "text",
+                editor: "single line",
                 indexing_mode: "KEY"
             },
             {
