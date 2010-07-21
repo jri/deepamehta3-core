@@ -30,6 +30,7 @@ public class DataField {
     private static final String KEY_LABEL = "label";
     private static final String KEY_DATA_TYPE = "data_type";
     private static final String KEY_RELATED_TYPE_URI = "related_type_uri";
+    private static final String KEY_READ_ONLY = "read_only";
     private static final String KEY_INDEXING_MODE = "indexing_mode";
     private static final String KEY_EDITOR = "editor";
     private static final String KEY_RENDERER_CLASS = "renderer_class";
@@ -125,6 +126,10 @@ public class DataField {
         setProperty(KEY_URI, uri);
     }
 
+    public void setLabel(String label) {
+        setProperty(KEY_LABEL, label);
+    }
+
     // "text" (default) / "number" / "date" / "html" / "relation"
     public void setDataType(String dataType) {
         setProperty(KEY_DATA_TYPE, dataType);
@@ -135,18 +140,18 @@ public class DataField {
         setProperty(KEY_RELATED_TYPE_URI, relatedTypeUri);
     }
 
-    public void setLabel(String label) {
-        setProperty(KEY_LABEL, label);
-    }
-
-    // "single line" (default) / "multi line"
-    public void setEditor(String editor) {
-        setProperty(KEY_EDITOR, editor);
+    public void setReadOnly(boolean readOnly) {
+        setProperty(KEY_READ_ONLY, readOnly);
     }
 
     // "OFF" (default) / "KEY" / "FULLTEXT" / "FULLTEXT_KEY"
     public void setIndexingMode(String indexingMode) {
         setProperty(KEY_INDEXING_MODE, indexingMode);
+    }
+
+    // "single line" (default) / "multi line"
+    public void setEditor(String editor) {
+        setProperty(KEY_EDITOR, editor);
     }
 
     public void setRendererClass(String rendererClass) {
