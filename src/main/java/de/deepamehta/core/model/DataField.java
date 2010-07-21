@@ -30,9 +30,9 @@ public class DataField {
     private static final String KEY_LABEL = "label";
     private static final String KEY_DATA_TYPE = "data_type";
     private static final String KEY_RELATED_TYPE_URI = "related_type_uri";
-    private static final String KEY_READ_ONLY = "read_only";
-    private static final String KEY_INDEXING_MODE = "indexing_mode";
+    private static final String KEY_EDITABLE = "editable";
     private static final String KEY_EDITOR = "editor";
+    private static final String KEY_INDEXING_MODE = "indexing_mode";
     private static final String KEY_RENDERER_CLASS = "renderer_class";
 
     private static final Map<String, String> DEFAULT_RENDERERS = new HashMap();
@@ -108,6 +108,10 @@ public class DataField {
         return (String) getProperty(KEY_DATA_TYPE);
     }
 
+    public Boolean getEditable() {
+        return (Boolean) getProperty(KEY_EDITABLE);
+    }
+
     public String getEditor() {
         return (String) getProperty(KEY_EDITOR);
     }
@@ -140,18 +144,18 @@ public class DataField {
         setProperty(KEY_RELATED_TYPE_URI, relatedTypeUri);
     }
 
-    public void setReadOnly(boolean readOnly) {
-        setProperty(KEY_READ_ONLY, readOnly);
-    }
-
-    // "OFF" (default) / "KEY" / "FULLTEXT" / "FULLTEXT_KEY"
-    public void setIndexingMode(String indexingMode) {
-        setProperty(KEY_INDEXING_MODE, indexingMode);
+    public void setEditable(boolean editable) {
+        setProperty(KEY_EDITABLE, editable);
     }
 
     // "single line" (default) / "multi line"
     public void setEditor(String editor) {
         setProperty(KEY_EDITOR, editor);
+    }
+
+    // "OFF" (default) / "KEY" / "FULLTEXT" / "FULLTEXT_KEY"
+    public void setIndexingMode(String indexingMode) {
+        setProperty(KEY_INDEXING_MODE, indexingMode);
     }
 
     public void setRendererClass(String rendererClass) {
@@ -181,6 +185,10 @@ public class DataField {
     private void setDefaults() {
         if (getDataType() == null) {
             setDataType("text");
+        }
+        //
+        if (getEditable() == null) {
+            setEditable(true);
         }
         //
         if (getEditor() == null) {
