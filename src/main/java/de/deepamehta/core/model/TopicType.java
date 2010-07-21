@@ -119,6 +119,15 @@ public class TopicType extends Topic {
             "\" has no data field \"" + uri + "\"");
     }
 
+    public boolean hasDataField(String uri) {
+        for (DataField dataField : dataFields) {
+            if (dataField.getUri().equals(uri)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
     // ---
 
     public void addDataField(DataField dataField) {

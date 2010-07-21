@@ -40,9 +40,9 @@ public class Plugin implements BundleActivator {
     private String pluginClass;
     private String pluginPackage;
     private Bundle pluginBundle;
-    private Topic  pluginTopic;             // Represents this plugin in DB. Holds plugin DB version number.
+    private Topic  pluginTopic;                 // Represents this plugin in DB. Holds plugin DB version number.
 
-    protected Properties configProperties;    // Read from file "plugin.properties"
+    protected Properties configProperties;      // Read from file "plugin.properties"
     private boolean isActivated;
 
     private ServiceTracker deepamehtaServiceTracker;
