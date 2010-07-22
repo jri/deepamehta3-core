@@ -7,13 +7,15 @@
                 uri: "de/deepamehta/core/property/Title",
                 data_type: "text",
                 editor: "single line",
-                indexing_mode: "FULLTEXT"
+                indexing_mode: "FULLTEXT",
+                renderer_class: TitleRenderer
             },
             {
                 label: "Text",
                 uri: "de/deepamehta/core/property/Text",
                 data_type: "html",
-                indexing_mode: "FULLTEXT"
+                indexing_mode: "FULLTEXT",
+                renderer_class: BodyTextRenderer
             }
         ],
         view: {label: "Note", icon_src: "images/pencil.png"},
