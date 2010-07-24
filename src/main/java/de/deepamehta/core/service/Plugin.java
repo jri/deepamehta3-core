@@ -15,6 +15,10 @@ import org.osgi.service.http.HttpService;
 import org.osgi.service.http.NamespaceException;
 import org.osgi.util.tracker.ServiceTracker;
 
+import org.codehaus.jettison.json.JSONArray;
+import org.codehaus.jettison.json.JSONException;
+import org.codehaus.jettison.json.JSONObject;
+
 import java.util.ArrayList;
 import java.util.Dictionary;
 import java.util.HashMap;
@@ -157,6 +161,12 @@ public class Plugin implements BundleActivator {
     }
 
     public void providePropertiesHook(Relation relation) {
+    }
+
+    // ---
+
+    public JSONObject executeCommandHook(String command, Map params, Map<String, String> clientContext) {
+        return null;
     }
 
 

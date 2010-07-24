@@ -6,6 +6,10 @@ import de.deepamehta.core.model.TopicType;
 import de.deepamehta.core.model.RelatedTopic;
 import de.deepamehta.core.model.Relation;
 
+import org.codehaus.jettison.json.JSONArray;
+import org.codehaus.jettison.json.JSONException;
+import org.codehaus.jettison.json.JSONObject;
+
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
@@ -95,6 +99,10 @@ public interface DeepaMehtaService {
     public void removeDataField(String typeUri, String fieldUri);
 
     public void setDataFieldOrder(String typeUri, List fieldUris);
+
+    // --- Commands ---
+
+    public JSONObject executeCommand(String command, Map params, Map clientContext);
 
     // --- Plugins ---
 

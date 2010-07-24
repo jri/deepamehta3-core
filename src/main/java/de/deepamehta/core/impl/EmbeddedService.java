@@ -13,6 +13,10 @@ import de.deepamehta.core.storage.Storage;
 import de.deepamehta.core.storage.Transaction;
 import de.deepamehta.core.storage.neo4j.Neo4jStorage;
 
+import org.codehaus.jettison.json.JSONArray;
+import org.codehaus.jettison.json.JSONException;
+import org.codehaus.jettison.json.JSONObject;
+
 import java.lang.reflect.Method;
 import java.lang.reflect.InvocationTargetException;
 
@@ -21,6 +25,8 @@ import java.util.Collection;
 import java.util.Dictionary;
 import java.util.HashMap;
 import java.util.Hashtable;
+import java.util.HashSet;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -46,7 +52,9 @@ public class EmbeddedService implements DeepaMehtaService {
         POST_UPDATE("postUpdateHook", Topic.class, Map.class),
 
         PROVIDE_TOPIC_PROPERTIES("providePropertiesHook", Topic.class),
-        PROVIDE_RELATION_PROPERTIES("providePropertiesHook", Relation.class);
+        PROVIDE_RELATION_PROPERTIES("providePropertiesHook", Relation.class),
+
+        EXECUTE_COMMAND("executeCommandHook", String.class, Map.class, Map.class);
 
         private final String name;
         private final Class[] paramClasses;
@@ -575,6 +583,37 @@ public class EmbeddedService implements DeepaMehtaService {
         }
     }
 
+    // --- Commands ---
+
+    @Override
+    public JSONObject executeCommand(String command, Map params, Map clientContext) {
+        JSONObject result = null;
+        RuntimeException ex = null;
+        Transaction tx = storage.beginTx();
+        try {
+            Iterator<JSONObject> i = triggerHook(Hook.EXECUTE_COMMAND, command, params, clientContext).iterator();
+            if (!i.hasNext()) {
+                throw new RuntimeException("Command is not handled by any plugin");
+            }
+            result = i.next();
+            if (i.hasNext()) {
+                throw new RuntimeException("Ambiguity: more than one plugin returned a result");
+            }
+            //
+            tx.success();
+        } catch (Throwable e) {
+            logger.warning("ROLLBACK!");
+            ex = new RuntimeException("Command " + params + " can't be executed", e);
+        } finally {
+            tx.finish();
+            if (ex == null) {
+                return result;
+            } else {
+                throw ex;
+            }
+        }
+    }
+
     // --- Plugins ---
 
     @Override
@@ -656,13 +695,18 @@ public class EmbeddedService implements DeepaMehtaService {
 
     // --- Plugins ---
 
-    private void triggerHook(Hook hook, Object... params) throws NoSuchMethodException,
-                                                                 IllegalAccessException,
-                                                                 InvocationTargetException {
+    private Set triggerHook(Hook hook, Object... params) throws NoSuchMethodException,
+                                                                IllegalAccessException,
+                                                                InvocationTargetException {
+        Set resultSet = new HashSet();
         for (Plugin plugin : plugins.values()) {
             Method hookMethod = plugin.getClass().getMethod(hook.name, hook.paramClasses);
-            hookMethod.invoke(plugin, params);
+            Object result = hookMethod.invoke(plugin, params);
+            if (result != null) {
+                resultSet.add(result);
+            }
         }
+        return resultSet;
     }
 
     private void updatePluginDbModelVersion(Plugin plugin, int dbModelVersion) {
