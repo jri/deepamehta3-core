@@ -603,7 +603,7 @@ public class EmbeddedService implements DeepaMehtaService {
             tx.success();
         } catch (Throwable e) {
             logger.warning("ROLLBACK!");
-            ex = new RuntimeException("Command " + params + " can't be executed", e);
+            ex = new RuntimeException("Command \"" + command + "\" can't be executed " + params, e);
         } finally {
             tx.finish();
             if (ex == null) {
