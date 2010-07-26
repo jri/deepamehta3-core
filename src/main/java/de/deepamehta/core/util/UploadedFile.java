@@ -1,6 +1,6 @@
 package de.deepamehta.core.util;
 
-import java.io.InputStream;
+import java.io.File;
 
 
 
@@ -22,24 +22,27 @@ public class UploadedFile {
 
     // ---------------------------------------------------------------------------------------------- Instance Variables
 
-    private InputStream inputStream;
+    private File file;
     private String fileName;
     private String mimeType;
 
     // ---------------------------------------------------------------------------------------------------- Constructors
 
-    public UploadedFile(InputStream inputStream, String fileName, String mimeType) {
-        this.inputStream = inputStream;
+    public UploadedFile(File file, String fileName, String mimeType) {
+        this.file = file;
         this.fileName = fileName;
         this.mimeType = mimeType;
     }
 
     // -------------------------------------------------------------------------------------------------- Public Methods
 
-    public InputStream getInputStream() {
-        return inputStream;
+    public File getFile() {
+        return file;
     }
 
+    /**
+     * Returns the original (client-side) file name.
+     */
     public String getFileName() {
         return fileName;
     }
@@ -52,6 +55,6 @@ public class UploadedFile {
 
     @Override
     public String toString() {
-        return "file \"" + fileName + "\" (" + mimeType + ")";
+        return "\"" + fileName + "\" (" + mimeType + "), local: " + file;
     }
 }
