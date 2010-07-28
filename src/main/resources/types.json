@@ -1,6 +1,9 @@
 [
     {
+        label: "Note",
         uri: "de/deepamehta/core/topictype/Note",
+        icon_src: "images/pencil.png",
+        js_renderer_class: "PlainDocument",
         fields: [
             {
                 label: "Title",
@@ -8,21 +11,22 @@
                 data_type: "text",
                 editor: "single line",
                 indexing_mode: "FULLTEXT",
-                renderer_class: TitleRenderer
+                js_renderer_class: TitleRenderer
             },
             {
                 label: "Text",
                 uri: "de/deepamehta/core/property/Text",
                 data_type: "html",
                 indexing_mode: "FULLTEXT",
-                renderer_class: BodyTextRenderer
+                js_renderer_class: BodyTextRenderer
             }
-        ],
-        view: {label: "Note", icon_src: "images/pencil.png"},
-        implementation: "PlainDocument"
+        ]
     },
     {
+        label: "Search Result",
         uri: "de/deepamehta/core/topictype/SearchResult",
+        icon_src: "images/bucket.png",
+        js_renderer_class: "PlainDocument",
         fields: [
             {
                 label: "Search Term",
@@ -30,16 +34,17 @@
                 data_type: "text",
                 editor: "single line"
             }
-        ],
-        view: {label: "Search Result", icon_src: "images/bucket.png"},
-        implementation: "PlainDocument"
+        ]
     },
     {
+        label: "Topic Type",
         uri: "de/deepamehta/core/topictype/TopicType",
+        icon_src: "images/drawer.png",
+        js_renderer_class: "PlainDocument",
         fields: [
             {
                 label: "Type Name",
-                uri: "de/deepamehta/core/property/TypeName",
+                uri: "de/deepamehta/core/property/TypeLabel",
                 data_type: "text",
                 editor: "single line"
             },
@@ -52,22 +57,22 @@
             {
                 label: "Icon",
                 uri: "de/deepamehta/core/property/Icon",
-                data_type: "relation",
-                related_type_uri: "de/deepamehta/core/topictype/Icon",
-                renderer_class: "IconFieldRenderer"
+                data_type: "reference",
+                ref_topic_type_uri: "de/deepamehta/core/topictype/Icon",
+                js_renderer_class: "IconFieldRenderer"
             },
             {
                 label: "Data Fields",
                 uri: "de/deepamehta/core/property/DataFields",
                 data_type: "field-definition",
-                renderer_class: "FieldDefinitionRenderer"
+                js_renderer_class: "FieldDefinitionRenderer"
             }
-        ],
-        view: {label: "Topic Type", icon_src: "images/drawer.png"},
-        implementation: "PlainDocument"
+        ]
     },
     {
+        label: "Plugin",
         uri: "de/deepamehta/core/topictype/Plugin",
+        js_renderer_class: "PlainDocument",
         fields: [
             {
                 label: "Plugin ID",
@@ -81,8 +86,6 @@
                 uri: "de/deepamehta/core/property/DBModelVersion",
                 data_type: "number"
             }
-        ],
-        view: {label: "Plugin"},
-        implementation: "PlainDocument"
+        ]
     }
 ]

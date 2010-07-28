@@ -370,15 +370,16 @@ public class Neo4jStorage implements Storage {
         // 2) calculate label
         String label;
         TopicType topicType = getTopicType(typeUri);
-        String typeLabelField = (String) topicType.getProperty("label_field", null);
-        if (typeLabelField != null) {
-            throw new RuntimeException("not yet implemented");
+        String topicLabelFieldUri = (String) topicType.getProperty("topic_label_field_uri", null);
+        if (topicLabelFieldUri != null) {
+            throw new RuntimeException("topic_label_field_uri not yet implemented");
         } else {
             if (topicType.getDataFields().size() > 0) {
+                // use value of first data field
                 String fieldUri = topicType.getDataField(0).getUri();
                 label = node.getProperty(fieldUri).toString();   // Note: property value can be a number as well
             } else {
-                // there are no properties -> the label can't be set
+                // there are no data fields -> the label can't be set
                 label = "?";
             }
         }

@@ -678,7 +678,7 @@ public class EmbeddedService implements DeepaMehtaService {
 
     // --- Topics ---
 
-    // FIXME: method to be dropped. Missing properties should be regarded as normal state.
+    // FIXME: method to be dropped. Missing properties are regarded as normal state.
     // Otherwise all instances would be required to be updated once a data field has been added to the type definition.
     // Application logic (server-side) and also the client should cope with missing properties.
     private Map initProperties(Map properties, String typeUri) {
@@ -686,7 +686,7 @@ public class EmbeddedService implements DeepaMehtaService {
             properties = new HashMap();
         }
         for (DataField dataField : getTopicType(typeUri).getDataFields()) {
-            if (!dataField.getDataType().equals("relation") && properties.get(dataField.getUri()) == null) {
+            if (!dataField.getDataType().equals("reference") && properties.get(dataField.getUri()) == null) {
                 properties.put(dataField.getUri(), "");
             }
         }

@@ -29,11 +29,11 @@ public class DataField {
     private static final String KEY_URI = "uri";
     private static final String KEY_LABEL = "label";
     private static final String KEY_DATA_TYPE = "data_type";
-    private static final String KEY_RELATED_TYPE_URI = "related_type_uri";
+    private static final String KEY_REF_TOPIC_TYPE_URI = "ref_topic_type_uri";
     private static final String KEY_EDITABLE = "editable";
     private static final String KEY_EDITOR = "editor";
     private static final String KEY_INDEXING_MODE = "indexing_mode";
-    private static final String KEY_RENDERER_CLASS = "renderer_class";
+    private static final String KEY_JS_RENDERER_CLASS = "js_renderer_class";
 
     private static final Map<String, String> DEFAULT_RENDERERS = new HashMap();
     static {
@@ -41,7 +41,7 @@ public class DataField {
         DEFAULT_RENDERERS.put("number", "NumberFieldRenderer");
         DEFAULT_RENDERERS.put("date", "DateFieldRenderer");
         DEFAULT_RENDERERS.put("html", "HTMLFieldRenderer");
-        DEFAULT_RENDERERS.put("relation", "ReferenceFieldRenderer");
+        DEFAULT_RENDERERS.put("reference", "ReferenceFieldRenderer");
     }
 
     // ---------------------------------------------------------------------------------------------- Instance Variables
@@ -121,7 +121,7 @@ public class DataField {
     }
 
     public String getRendererClass() {
-        return (String) getProperty(KEY_RENDERER_CLASS);
+        return (String) getProperty(KEY_JS_RENDERER_CLASS);
     }
 
     // ---
@@ -134,14 +134,14 @@ public class DataField {
         setProperty(KEY_LABEL, label);
     }
 
-    // "text" (default) / "number" / "date" / "html" / "relation"
+    // "text" (default) / "number" / "date" / "html" / "reference"
     public void setDataType(String dataType) {
         setProperty(KEY_DATA_TYPE, dataType);
     }
 
-    // used for dataType="relation" fields
+    // used for dataType="reference" fields
     public void setRelatedTypeUri(String relatedTypeUri) {
-        setProperty(KEY_RELATED_TYPE_URI, relatedTypeUri);
+        setProperty(KEY_REF_TOPIC_TYPE_URI, relatedTypeUri);
     }
 
     public void setEditable(boolean editable) {
@@ -159,7 +159,7 @@ public class DataField {
     }
 
     public void setRendererClass(String rendererClass) {
-        setProperty(KEY_RENDERER_CLASS, rendererClass);
+        setProperty(KEY_JS_RENDERER_CLASS, rendererClass);
     }
 
     // ---
