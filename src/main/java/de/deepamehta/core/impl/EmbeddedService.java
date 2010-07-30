@@ -20,6 +20,11 @@ import org.codehaus.jettison.json.JSONObject;
 import java.lang.reflect.Method;
 import java.lang.reflect.InvocationTargetException;
 
+import java.io.BufferedReader;
+import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.io.IOException;
+
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Dictionary;
@@ -638,23 +643,22 @@ public class EmbeddedService implements DeepaMehtaService {
         return plugins.get(pluginId);
     }
 
+    /**
+     * Runs a plugin migration in a transaction.
+     */
     @Override
-    public void runPluginMigration(Plugin plugin, int migrationNr) throws RuntimeException {
+    public void runPluginMigration(Plugin plugin, int migrationNr) {
         RuntimeException ex = null;
         Transaction tx = storage.beginTx();
         try {
-            Migration migration = plugin.getMigration(migrationNr);
-            logger.info("Running plugin migration " + migration.getClass().getName());
-            migration.setDeepaMehtaService(this);
-            migration.run();
-            // update DB model version
-            logger.info("Plugin migration complete - Updating DB model version (" + migrationNr + ")");
+            runMigration(migrationNr, plugin);
             updatePluginDbModelVersion(plugin, migrationNr);
             //
             tx.success();
         } catch (Throwable e) {
             logger.warning("ROLLBACK!");
-            ex = new RuntimeException("Plugin migration can't run", e);
+            ex = new RuntimeException("Error while running migration " + migrationNr +
+                " of plugin \"" + plugin.getName() + "\"", e);
         } finally {
             tx.finish();
             if (ex != null) throw ex;
@@ -729,7 +733,7 @@ public class EmbeddedService implements DeepaMehtaService {
         storage.shutdown();
     }
 
-    //
+    // --- Migrations ---
 
     private void runCoreMigrations() {
         int dbModelVersion = storage.getDbModelVersion();
@@ -743,17 +747,101 @@ public class EmbeddedService implements DeepaMehtaService {
     }
 
     private void runCoreMigration(int migrationNr) {
+        runMigration(migrationNr, null);
+        storage.setDbModelVersion(migrationNr);
+    }
+
+    private void runMigration(int migrationNr, Plugin plugin) {
+        String migrationInfo = null;                            // for reporting only
         try {
-            String migrationClassName = CORE_MIGRATIONS_PACKAGE + ".Migration" + migrationNr;
-            Migration migration = (Migration) Class.forName(migrationClassName).newInstance();
-            logger.info("Running core migration " + migration.getClass().getName());
-            migration.setDeepaMehtaService(this);
-            migration.run();
-            // update DB model version
-            logger.info("Core migration complete - Updating DB model version (" + migrationNr + ")");
-            storage.setDbModelVersion(migrationNr);
+            Class migrationClass = null;                        // for the imperative part
+            InputStream is = null;                              // for the declarative part
+            String typesFile = migrationFileName(migrationNr);  // for the declarative part
+            String type = plugin != null ? "plugin" : "core";
+            // initialize type-specific variables
+            if (type.equals("core")) {
+                migrationInfo = "core migration " + migrationNr;
+                logger.info("Running " + migrationInfo);
+                is = getClass().getResourceAsStream(typesFile);
+                String migrationClassName = CORE_MIGRATIONS_PACKAGE + ".Migration" + migrationNr;
+                migrationClass = getClassOrNull(migrationClassName);
+            } else if (type.equals("plugin")) {
+                migrationInfo = "migration " + migrationNr + " of plugin \"" + plugin.getName() + "\"";
+                logger.info("Running " + migrationInfo);
+                is = plugin.getResourceAsStream(typesFile);
+                migrationClass = plugin.getMigrationClass(migrationNr);
+            }
+            // 1) run declarative part
+            boolean hasDeclarativePart = is != null;
+            if (hasDeclarativePart) {
+                readTypesFromFile(is, typesFile);
+            } else {
+                logger.info("No resource file available (tried \"" + typesFile + "\")");
+            }
+            // 2) run imperative part
+            boolean hasImperativePart = migrationClass != null;
+            if (hasImperativePart) {
+                Migration migration = (Migration) migrationClass.newInstance();
+                logger.info("Running " + type + " migration class " + migrationClass.getName());
+                migration.setDeepaMehtaService(this);
+                migration.run();
+            } else {
+                logger.info("No migration class for migration " + migrationNr + " available");
+            }
+            // error check
+            if (!hasDeclarativePart && !hasImperativePart) {
+                throw new RuntimeException("Neither a resource file \"" + typesFile +
+                    "\" nor a migration class " + migrationClass.getName() + " is available");
+            }
+            //
+            logger.info(type + " migration complete -- Updating DB model version (" + migrationNr + ")");
         } catch (Throwable e) {
-            throw new RuntimeException("Core migration can't run", e);
+            throw new RuntimeException("Error while running " + migrationInfo, e);
+        }
+    }
+
+    // ---
+
+    /**
+     * <p>Creates types from a JSON formatted input stream.<p>
+     */
+    private void readTypesFromFile(InputStream is, String typesFileName) {
+        try {
+            logger.info("Reading types from resource file \"" + typesFileName + "\"");
+            BufferedReader in = new BufferedReader(new InputStreamReader(is));
+            String line;
+            StringBuilder json = new StringBuilder();
+            while ((line = in.readLine()) != null) {
+                json.append(line);
+            }
+            createTypes(json.toString());
+        } catch (Throwable e) {
+            throw new RuntimeException("Error while reading resource file \"" + typesFileName + "\"", e);
+        }
+    }
+
+    private void createTypes(String json) throws JSONException {
+        JSONArray types = new JSONArray(json);
+        for (int i = 0; i < types.length(); i++) {
+            TopicType topicType = new TopicType(types.getJSONObject(i));
+            createTopicType(topicType.getProperties(), topicType.getDataFields());
+        }
+    }
+
+    private String migrationFileName(int migrationNr) {
+        return "/types" + migrationNr + ".json";
+    }
+
+    // --- Generic Utilities ---
+
+    /**
+     * Uses the core bundle's class loader to load a class by name.
+     */
+    private Class getClassOrNull(String className) {
+        try {
+            return Class.forName(className);
+        } catch (ClassNotFoundException e) {
+            return null;
         }
     }
 }

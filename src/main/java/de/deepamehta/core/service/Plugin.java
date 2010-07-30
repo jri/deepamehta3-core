@@ -65,6 +65,10 @@ public class Plugin implements BundleActivator {
 
 
 
+    public String getName() {
+        return pluginName;
+    }
+
     public Topic getPluginTopic() {
         return pluginTopic;
     }
@@ -73,18 +77,41 @@ public class Plugin implements BundleActivator {
         return getConfigProperty(key, null);
     }
 
-    public Migration getMigration(int migrationNr) throws ClassNotFoundException,
-                                                          InstantiationException,
-                                                          IllegalAccessException {
-        // Generic plugins (plugin bundles not containing a plugin subclass) who provide migrations must
-        // set the "pluginPackage" config property. Otherwise the migration class can't be located.
+    /**
+     * Uses the plugin bundle's class loader to load the migration class for the given migration number.
+     *
+     * @return  the migration class, or <code>null</code> if there is no such class.
+     *          Note: a migration can be purely declarative (just consisting of a typesNN.json file).
+     */
+    public Class getMigrationClass(int migrationNr) throws ClassNotFoundException,
+                                                           InstantiationException,
+                                                           IllegalAccessException {
+        // Generic plugins (plugin bundles not containing a plugin subclass) which provide migration classes
+        // must set the "pluginPackage" config property. Otherwise the migration class can't be located.
         if (pluginPackage.equals("de.deepamehta.core.service")) {
-            throw new RuntimeException("Migration class can't be located because plugin package is unknown " +
-                "(there is neither a plugin subclass nor a \"pluginPackage\" config property)");
+            return null;
         }
         //
         String migrationClassName = pluginPackage + ".migrations.Migration" + migrationNr;
-        return (Migration) pluginBundle.loadClass(migrationClassName).newInstance();
+        try {
+            return pluginBundle.loadClass(migrationClassName);
+        } catch (ClassNotFoundException e) {
+            return null;
+        }
+    }
+
+    /**
+     * Uses the plugin bundle's class loader to find a resource.
+     *
+     * @return  A InputStream object or null if no resource with this name is found.
+     */
+    public InputStream getResourceAsStream(String name) throws IOException {
+        URL url = pluginBundle.getResource(name);
+        if (url != null) {
+            return url.openStream();
+        } else {
+            return null;
+        }
     }
 
     // FIXME: drop method and make dms protected instead?
@@ -288,16 +315,16 @@ public class Plugin implements BundleActivator {
     private Properties readConfigFile() {
         try {
             Properties properties = new Properties();
-            // We always use the bundle's classloader to access the config file.
+            // We always use the plugin bundle's classloader to access the config file.
             // getClass().getResource() would fail for generic plugins (plugin bundles not containing a plugin
-            // subclass) because the DeepaMeta 3 Core classloader would be used and it has no access.
+            // subclass) because the core bundle's classloader would be used and it has no access.
             URL url = pluginBundle.getResource("/plugin.properties");
             if (url != null) {
                 InputStream in = url.openStream();
-                logger.info("Reading plugin config file /plugin.properties");
+                logger.info("Reading plugin config file \"/plugin.properties\"");
                 properties.load(in);
             } else {
-                logger.info("No plugin config file available - Using default configuration");
+                logger.info("No plugin config file available -- Using default configuration");
             }
             return properties;
         } catch (IOException e) {
@@ -343,6 +370,9 @@ public class Plugin implements BundleActivator {
         }
     }
 
+    /**
+     * Determines the migrations to be run for this plugin and run them.
+     */
     private void runPluginMigrations() {
         int dbModelVersion = (Integer) pluginTopic.getProperty("de/deepamehta/core/property/DBModelVersion");
         int requiredPluginDbVersion = Integer.parseInt(getConfigProperty("requiredPluginDBVersion", "0"));
