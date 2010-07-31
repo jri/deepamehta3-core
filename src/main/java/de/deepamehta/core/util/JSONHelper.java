@@ -17,7 +17,7 @@ import java.util.Map;
 
 public class JSONHelper {
 
-    // --- Generic ---
+    /*** Generic ***/
 
     public static Map toMap(JSONObject o) throws JSONException {
         return toMap(o, new HashMap());
@@ -40,7 +40,7 @@ public class JSONHelper {
         return list;
     }
 
-    // --- DeepaMehta specific ---
+    /*** DeepaMehta specific ***/
 
     public static JSONArray topicsToJson(List<Topic> topics) throws JSONException {
         JSONArray array = new JSONArray();

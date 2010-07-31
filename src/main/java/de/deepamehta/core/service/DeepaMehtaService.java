@@ -59,7 +59,7 @@ public interface DeepaMehtaService {
      * @param   wholeWord   If true the searchTerm is regarded as whole word.
      *                      If false the searchTerm is regarded as begin-of-word substring.
      */
-    public Topic searchTopics(String searchTerm, String fieldUri, boolean wholeWord, Map clientContext);
+    public List<Topic> searchTopics(String searchTerm, String fieldUri, boolean wholeWord, Map clientContext);
 
     public Topic createTopic(String typeUri, Map properties, Map clientContext);
 

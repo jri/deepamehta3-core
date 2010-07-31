@@ -237,30 +237,25 @@ public class EmbeddedService implements DeepaMehtaService {
     }
 
     @Override
-    public Topic searchTopics(String searchTerm, String fieldUri, boolean wholeWord, Map clientContext) {
-        Topic resultTopic = null;
+    public List<Topic> searchTopics(String searchTerm, String fieldUri, boolean wholeWord, Map clientContext) {
+        List<Topic> searchResult = null;
+        RuntimeException ex = null;
         Transaction tx = storage.beginTx();
         try {
-            List<Topic> searchResult = storage.searchTopics(searchTerm, fieldUri, wholeWord);
-            // create result topic (a bucket)
-            Map properties = new HashMap();
-            properties.put("de/deepamehta/core/property/SearchTerm", searchTerm);
-            resultTopic = createTopic("de/deepamehta/core/topictype/SearchResult",
-                properties, clientContext);
-            // associate result topics
-            logger.fine("Relating " + searchResult.size() + " result topics");
-            for (Topic topic : searchResult) {
-                logger.fine("Relating " + topic);
-                createRelation("SEARCH_RESULT", resultTopic.id, topic.id, new HashMap());
-            }
+            searchResult = storage.searchTopics(searchTerm, fieldUri, wholeWord);
             //
             tx.success();   
         } catch (Throwable e) {
-            e.printStackTrace();
             logger.warning("ROLLBACK!");
+            ex = new RuntimeException("Error while searching topics (searchTerm=" + searchTerm + ", fieldUri=" +
+                fieldUri + ", wholeWord=" + wholeWord + ", clientContext=" + clientContext + ")", e);
         } finally {
             tx.finish();
-            return resultTopic;
+            if (ex == null) {
+                return searchResult;
+            } else {
+                throw ex;
+            }
         }
     }
 

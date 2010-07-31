@@ -86,8 +86,8 @@ public class Plugin implements BundleActivator {
     public Class getMigrationClass(int migrationNr) throws ClassNotFoundException,
                                                            InstantiationException,
                                                            IllegalAccessException {
-        // Generic plugins (plugin bundles not containing a plugin subclass) which provide migration classes
-        // must set the "pluginPackage" config property. Otherwise the migration class can't be located.
+        // Generic plugins (plugin bundles not containing a Plugin subclass) which provide migration classes
+        // must set the "pluginPackage" config property. Otherwise the migration classes can't be located.
         if (pluginPackage.equals("de.deepamehta.core.service")) {
             return null;
         }
@@ -291,10 +291,16 @@ public class Plugin implements BundleActivator {
             if (namespace != null) {
                 logger.info("Registering REST resources of plugin \"" + pluginName + "\" at namespace \"" +
                     namespace + "\"");
+                // Generic plugins (plugin bundles not containing a Plugin subclass) which provide resource classes
+                // must set the "pluginPackage" config property. Otherwise the resource classes can't be located.
+                if (pluginPackage.equals("de.deepamehta.core.service")) {
+                    throw new RuntimeException("Resource classes can't be located because plugin package is unknown " +
+                        "(there is neither a Plugin subclass nor a \"pluginPackage\" config property)");
+                }
                 //
                 Dictionary initParams = new Hashtable();
                 initParams.put("com.sun.jersey.config.property.packages", pluginPackage + ".resources");
-            	//
+                //
                 httpService.registerServlet(namespace, new ServletContainer(), initParams, null);
             }
         } catch (Exception e) {
