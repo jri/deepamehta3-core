@@ -43,7 +43,7 @@ public class EmbeddedService implements DeepaMehtaService {
 
     private static final String DATABASE_PATH = "deepamehta-db";
     private static final String CORE_MIGRATIONS_PACKAGE = "de.deepamehta.core.impl.migrations";
-    private static final int REQUIRED_DB_MODEL_VERSION = 1;
+    private static final int REQUIRED_CORE_MIGRATION = 1;
 
     private Map<String, Plugin> plugins = new HashMap();
 
@@ -647,7 +647,7 @@ public class EmbeddedService implements DeepaMehtaService {
         Transaction tx = storage.beginTx();
         try {
             runMigration(migrationNr, plugin);
-            updatePluginDbModelVersion(plugin, migrationNr);
+            setPluginMigrationNr(plugin, migrationNr);
             //
             tx.success();
         } catch (Throwable e) {
@@ -708,9 +708,9 @@ public class EmbeddedService implements DeepaMehtaService {
         return resultSet;
     }
 
-    private void updatePluginDbModelVersion(Plugin plugin, int dbModelVersion) {
+    private void setPluginMigrationNr(Plugin plugin, int migrationNr) {
         Map properties = new HashMap();
-        properties.put("de/deepamehta/core/property/DBModelVersion", dbModelVersion);
+        properties.put("de/deepamehta/core/property/PluginMigrationNr", migrationNr);
         setTopicProperties(plugin.getPluginTopic().id, properties);
     }
 
@@ -731,21 +731,26 @@ public class EmbeddedService implements DeepaMehtaService {
     // --- Migrations ---
 
     private void runCoreMigrations() {
-        int dbModelVersion = storage.getDbModelVersion();
-        int requiredDbModelVersion = REQUIRED_DB_MODEL_VERSION;
-        int migrationsToRun = requiredDbModelVersion - dbModelVersion;
-        logger.info("dbModelVersion=" + dbModelVersion + ", requiredDbModelVersion=" +
-            requiredDbModelVersion + " => Running " + migrationsToRun + " core migrations");
-        for (int i = dbModelVersion + 1; i <= requiredDbModelVersion; i++) {
+        int migrationNr = storage.getMigrationNr();
+        int requiredMigrationNr = REQUIRED_CORE_MIGRATION;
+        int migrationsToRun = requiredMigrationNr - migrationNr;
+        logger.info("migrationNr=" + migrationNr + ", requiredMigrationNr=" + requiredMigrationNr +
+            " => Running " + migrationsToRun + " core migrations");
+        for (int i = migrationNr + 1; i <= requiredMigrationNr; i++) {
             runCoreMigration(i);
         }
     }
 
     private void runCoreMigration(int migrationNr) {
         runMigration(migrationNr, null);
-        storage.setDbModelVersion(migrationNr);
+        storage.setMigrationNr(migrationNr);
     }
 
+    /**
+     * Runs a core migration or a plugin migration.
+     *
+     * @param   plugin  <code>null</code> for a core migration.
+     */
     private void runMigration(int migrationNr, Plugin plugin) {
         String migrationInfo = null;                            // for reporting only
         try {
@@ -771,7 +776,7 @@ public class EmbeddedService implements DeepaMehtaService {
             if (hasDeclarativePart) {
                 readTypesFromFile(is, typesFile);
             } else {
-                logger.info("No resource file available (tried \"" + typesFile + "\")");
+                logger.info("No resource file found (tried \"" + typesFile + "\")");
             }
             // 2) run imperative part
             boolean hasImperativePart = migrationClass != null;
@@ -781,15 +786,15 @@ public class EmbeddedService implements DeepaMehtaService {
                 migration.setDeepaMehtaService(this);
                 migration.run();
             } else {
-                logger.info("No migration class for migration " + migrationNr + " available");
+                logger.info("No migration class for migration " + migrationNr + " found");
             }
             // error check
             if (!hasDeclarativePart && !hasImperativePart) {
                 throw new RuntimeException("Neither a resource file \"" + typesFile +
-                    "\" nor a migration class " + migrationClass.getName() + " is available");
+                    "\" nor a migration class " + migrationClass.getName() + " is found");
             }
             //
-            logger.info(type + " migration complete -- Updating DB model version (" + migrationNr + ")");
+            logger.info(type + " migration complete -- Updating migration number (" + migrationNr + ")");
         } catch (Throwable e) {
             throw new RuntimeException("Error while running " + migrationInfo, e);
         }

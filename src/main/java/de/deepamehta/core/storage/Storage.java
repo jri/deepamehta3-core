@@ -97,7 +97,7 @@ public interface Storage {
 
     public void shutdown();
 
-    public int getDbModelVersion();
+    public int getMigrationNr();
 
-    public void setDbModelVersion(int dbModelVersion);
+    public void setMigrationNr(int migrationNr);
 }

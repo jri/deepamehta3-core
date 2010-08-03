@@ -318,10 +318,10 @@ public class Neo4jStorage implements Storage {
         // 2) init meta model
         MetaModel model = new MetaModelImpl(graphDb, index);
         namespace = model.getGlobalNamespace();
-        // 3) init DB model version
-        if (!graphDb.getReferenceNode().hasProperty("db_model_version")) {
-            logger.info("Starting with a fresh DB - Setting DB model version to 0");
-            setDbModelVersion(0);
+        // 3) init migration number
+        if (!graphDb.getReferenceNode().hasProperty("core_migration_nr")) {
+            logger.info("Starting with a fresh DB -- Setting migration number to 0");
+            setMigrationNr(0);
         }
     }
 
@@ -340,13 +340,13 @@ public class Neo4jStorage implements Storage {
     }
 
     @Override
-    public int getDbModelVersion() {
-        return (Integer) graphDb.getReferenceNode().getProperty("db_model_version");
+    public int getMigrationNr() {
+        return (Integer) graphDb.getReferenceNode().getProperty("core_migration_nr");
     }
 
     @Override
-    public void setDbModelVersion(int dbModelVersion) {
-        graphDb.getReferenceNode().setProperty("db_model_version", dbModelVersion);
+    public void setMigrationNr(int migrationNr) {
+        graphDb.getReferenceNode().setProperty("core_migration_nr", migrationNr);
     }
 
 
@@ -501,7 +501,7 @@ public class Neo4jStorage implements Storage {
                 }
             }
             // Last resort: create new type
-            logger.info("### Relation type \"" + typeId + "\" does not exist - Creating it dynamically");
+            logger.info("### Relation type \"" + typeId + "\" does not exist -- Creating it dynamically");
             return DynamicRelationshipType.withName(typeId);
         }
     }

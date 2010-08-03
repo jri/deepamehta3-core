@@ -44,7 +44,7 @@ public class Plugin implements BundleActivator {
     private String pluginClass;
     private String pluginPackage;
     private Bundle pluginBundle;
-    private Topic  pluginTopic;                 // Represents this plugin in DB. Holds plugin DB version number.
+    private Topic  pluginTopic;                 // Represents this plugin in DB. Holds plugin migration number.
 
     protected Properties configProperties;      // Read from file "plugin.properties"
     private boolean isActivated;
@@ -271,7 +271,7 @@ public class Plugin implements BundleActivator {
 
     private void registerWebResources() {
         try {
-            logger.info("Registering web resources of plugin \"" + pluginName + "\"");
+            logger.info("Registering web resources of plugin \"" + pluginName + "\" at \"/" + pluginId + "\"");
             httpService.registerResources("/" + pluginId, "/web", null);
         } catch (NamespaceException e) {
             throw new RuntimeException("Web resources of plugin \"" + pluginName + "\" can't be registered", e);
@@ -330,7 +330,7 @@ public class Plugin implements BundleActivator {
                 logger.info("Reading plugin config file \"/plugin.properties\"");
                 properties.load(in);
             } else {
-                logger.info("No plugin config file available -- Using default configuration");
+                logger.info("No plugin config file found -- Using default configuration");
             }
             return properties;
         } catch (IOException e) {
@@ -352,7 +352,7 @@ public class Plugin implements BundleActivator {
             logger.info("Creating topic for plugin \"" + pluginName + "\"");
             Map properties = new HashMap();
             properties.put("de/deepamehta/core/property/PluginID", pluginId);
-            properties.put("de/deepamehta/core/property/DBModelVersion", 0);
+            properties.put("de/deepamehta/core/property/PluginMigrationNr", 0);
             // FIXME: clientContext=null
             pluginTopic = dms.createTopic("de/deepamehta/core/topictype/Plugin", properties, null);
         }
@@ -380,12 +380,12 @@ public class Plugin implements BundleActivator {
      * Determines the migrations to be run for this plugin and run them.
      */
     private void runPluginMigrations() {
-        int dbModelVersion = (Integer) pluginTopic.getProperty("de/deepamehta/core/property/DBModelVersion");
-        int requiredPluginDbVersion = Integer.parseInt(getConfigProperty("requiredPluginDBVersion", "0"));
-        int migrationsToRun = requiredPluginDbVersion - dbModelVersion;
-        logger.info("dbModelVersion=" + dbModelVersion + ", requiredPluginDbVersion=" + requiredPluginDbVersion +
+        int migrationNr = (Integer) pluginTopic.getProperty("de/deepamehta/core/property/PluginMigrationNr");
+        int requiredMigrationNr = Integer.parseInt(getConfigProperty("requiredPluginMigrationNr", "0"));
+        int migrationsToRun = requiredMigrationNr - migrationNr;
+        logger.info("migrationNr=" + migrationNr + ", requiredMigrationNr=" + requiredMigrationNr +
             " => Running " + migrationsToRun + " plugin migrations");
-        for (int i = dbModelVersion + 1; i <= requiredPluginDbVersion; i++) {
+        for (int i = migrationNr + 1; i <= requiredMigrationNr; i++) {
             dms.runPluginMigration(this, i);
         }
     }

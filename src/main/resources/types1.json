@@ -82,8 +82,8 @@
                 indexing_mode: "KEY"
             },
             {
-                label: "DB Model Version",
-                uri: "de/deepamehta/core/property/DBModelVersion",
+                label: "Plugin Migration Nr",
+                uri: "de/deepamehta/core/property/PluginMigrationNr",
                 data_type: "number"
             }
         ]
