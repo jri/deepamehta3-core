@@ -5,7 +5,7 @@
     <name>DeepaMehta 3 Core</name>
     <groupId>de.deepamehta</groupId>
     <artifactId>deepamehta3-core</artifactId>
-    <version>0.4</version>
+    <version>0.4.1-SNAPSHOT</version>
     <packaging>bundle</packaging>
 
     <parent>
@@ -30,7 +30,9 @@
                         <Private-Package>
                             de.deepamehta.core.*
                         </Private-Package>
-                        <Bundle-Activator>de.deepamehta.core.osgi.Activator</Bundle-Activator>
+                        <Bundle-Activator>
+                            de.deepamehta.core.osgi.Activator
+                        </Bundle-Activator>
                     </instructions>
                 </configuration>
             </plugin>

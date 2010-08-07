@@ -179,8 +179,7 @@ public class Neo4jStorage implements Storage {
     public Topic createTopic(String typeUri, Map properties) {
         Node node = graphDb.createNode();
         logger.info("Creating node => ID=" + node.getId());
-        // setNodeType(node, typeUri);
-        getMetaClass(typeUri).getDirectInstances().add(node);
+        getMetaClass(typeUri).getDirectInstances().add(node);       // set topic type
         setProperties(node, properties, typeUri);
         return new Topic(node.getId(), typeUri, null, properties);  // FIXME: label remains uninitialized
     }
@@ -372,12 +371,12 @@ public class Neo4jStorage implements Storage {
         TopicType topicType = getTopicType(typeUri);
         String topicLabelFieldUri = (String) topicType.getProperty("topic_label_field_uri", null);
         if (topicLabelFieldUri != null) {
-            throw new RuntimeException("topic_label_field_uri not yet implemented");
+            label = node.getProperty(topicLabelFieldUri).toString();    // Note: property value can be a number as well
         } else {
             if (topicType.getDataFields().size() > 0) {
                 // use value of first data field
                 String fieldUri = topicType.getDataField(0).getUri();
-                label = node.getProperty(fieldUri).toString();   // Note: property value can be a number as well
+                label = node.getProperty(fieldUri).toString();          // Note: property value can be a number as well
             } else {
                 // there are no data fields -> the label can't be set
                 label = "?";
