@@ -68,7 +68,7 @@ public class DataField {
             JSONHelper.toMap(dataField, properties);
             setDefaults();
         } catch (Throwable e) {
-            throw new RuntimeException("Error while parsing " + this, e);
+            throw new RuntimeException("Error while parsing data field " + this, e);
         }
     }
 
@@ -94,6 +94,19 @@ public class DataField {
     }
 
     public void setProperties(Map<String, Object> properties) {
+        // log override warning
+        StringBuilder log = new StringBuilder();
+        for (String key : properties.keySet()) {
+            Object newValue = properties.get(key);
+            Object oldValue = getProperty(key);
+            if (oldValue != null && !oldValue.equals(newValue)) {
+                log.append("\n  " + key + ": \"" + oldValue + "\" => \"" + newValue + "\"");
+            }
+        }
+        if (log.length() > 0) {
+            logger.warning("Overriding properties of data field " + this + ":" + log);
+        }
+        //
         this.properties = properties;
         setDefaults();
     }
@@ -177,7 +190,7 @@ public class DataField {
 
     @Override
     public String toString() {
-        return "data field \"" + getProperty(KEY_LABEL) + "\" (uri=\"" + getProperty(KEY_URI) + "\")";
+        return "\"" + getProperty(KEY_LABEL) + "\" (uri=\"" + getProperty(KEY_URI) + "\")";
     }
 
     // ------------------------------------------------------------------------------------------------- Private Methods
@@ -205,7 +218,7 @@ public class DataField {
             if (rendererClass != null) {
                 setRendererClass(rendererClass);
             } else {
-                logger.warning("No renderer declared for " + this +
+                logger.warning("No renderer declared for data field " + this +
                     " (there is no default renderer for data type \"" + dataType + "\")");
             }
         }

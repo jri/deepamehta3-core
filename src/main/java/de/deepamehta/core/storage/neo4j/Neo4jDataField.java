@@ -40,7 +40,7 @@ class Neo4jDataField extends DataField {
     Neo4jDataField(DataField dataField, Neo4jStorage storage) {
         this.metaProperty = storage.createMetaProperty(dataField.getUri());
         this.node = metaProperty.node();
-        logger.info("Creating " + dataField + " => ID=" + node.getId());
+        logger.info("Creating data field " + dataField + " => ID=" + node.getId());
         setProperties(dataField.getProperties());
     }
 
@@ -51,8 +51,17 @@ class Neo4jDataField extends DataField {
         // update memory
         super.setProperties(properties);
         // update DB
+        StringBuilder log = new StringBuilder();
         for (String key : properties.keySet()) {
-            node.setProperty(key, properties.get(key));
+            Object newValue = properties.get(key);
+            Object oldValue = node.getProperty(key, null);
+            if (oldValue != null && !oldValue.equals(newValue)) {
+                log.append("\n  " + key + ": \"" + oldValue + "\" => \"" + newValue + "\"");
+            }
+            node.setProperty(key, newValue);
+        }
+        if (log.length() > 0) {
+            logger.warning("Overriding properties of data field " + this + ":" + log);
         }
     }
 
