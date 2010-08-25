@@ -1,6 +1,5 @@
 package de.deepamehta.core.impl;
 
-import de.deepamehta.core.impl.plugins.DefaultPlugin;
 import de.deepamehta.core.model.DataField;
 import de.deepamehta.core.model.Topic;
 import de.deepamehta.core.model.TopicType;
@@ -95,8 +94,6 @@ public class EmbeddedService implements DeepaMehtaService {
                 throw ex;
             }
         }
-        // register default plugin
-        registerPlugin("de.deepamehta.3-core", new DefaultPlugin());
     }
 
 
