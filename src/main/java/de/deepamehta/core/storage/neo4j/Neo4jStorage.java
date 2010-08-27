@@ -102,8 +102,7 @@ public class Neo4jStorage implements Storage {
     public Topic getTopic(String key, Object value) {
         logger.info("Getting node by property (" + key + "=" + value + ")");
         Node node = index.getSingleNode(key, value);
-        // FIXME: type and label remain uninitialized
-        return node != null ? new Topic(node.getId(), null, null, getProperties(node)) : null;
+        return node != null ? buildTopic(node, true) : null;
     }
 
     @Override
