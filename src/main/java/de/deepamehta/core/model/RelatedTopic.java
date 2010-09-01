@@ -3,12 +3,18 @@ package de.deepamehta.core.model;
 
 
 /**
- * A topic data transfer object.
+ * A Topic-Relation pair.
+ * <p>
+ * Acts as a data transfer object.
  */
 public class RelatedTopic {
 
+    // ---------------------------------------------------------------------------------------------- Instance Variables
+
     private Topic topic;
     private Relation relation;
+
+    // ---------------------------------------------------------------------------------------------------- Constructors
 
     public RelatedTopic() {
     }
@@ -18,7 +24,7 @@ public class RelatedTopic {
         this.relation = relation;
     }
 
-    // ---
+    // -------------------------------------------------------------------------------------------------- Public Methods
 
     public Topic getTopic() {
         return topic;

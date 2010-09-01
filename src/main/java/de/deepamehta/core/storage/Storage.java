@@ -13,7 +13,7 @@ import java.util.Set;
 
 
 /**
- * Specification of the DeepaMehta storage layer in a DBMS-agnostic way.
+ * Abstraction of the DeepaMehta storage layer.
  */
 public interface Storage {
 
@@ -25,7 +25,7 @@ public interface Storage {
      * Looks up a topic by exact property value.
      * If no such topic exists <code>null</code> is returned.
      * If more than one topic is found a runtime exception is thrown.
-     * <br><br>
+     * <p>
      * IMPORTANT: Looking up a topic this way requires the property to be indexed with indexing mode <code>KEY</code>.
      * This is achieved by declaring the respective data field with <code>indexing_mode: "KEY"</code>
      * (for statically declared data field, typically in <code>types.json</code>) or
@@ -61,11 +61,14 @@ public interface Storage {
     public Relation getRelation(long id);
 
     /**
-     * Returns the relation between the two topics (regardless of type and direction).
-     * If no such relation exists null is returned.
-     * If more than one relation exists, only the first one is returned.
+     * Returns the relation between two topics. If no such relation exists null is returned.
+     * If more than one relation exists, an exception is thrown.
+     *
+     * @param   typeId      Relation type filter. Pass <code>null</code> to switch filter off.
+     * @param   isDirected  Direction filter. Pass <code>true</code> if direction matters. In this case the relation
+     *                      is expected to be directed <i>from</i> source topic <i>to</i> destination topic.
      */
-    public Relation getRelation(long srcTopicId, long dstTopicId);
+    public Relation getRelation(long srcTopicId, long dstTopicId, String typeId, boolean isDirected);
 
     public Relation createRelation(String typeId, long srcTopicId, long dstTopicId, Map properties);
 

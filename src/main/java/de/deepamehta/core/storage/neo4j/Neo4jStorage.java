@@ -212,24 +212,37 @@ public class Neo4jStorage implements Storage {
     }
 
     @Override
-    public Relation getRelation(long srcTopicId, long dstTopicId) {
+    public Relation getRelation(long srcTopicId, long dstTopicId, String typeId, boolean isDirected) {
         logger.info("Getting relationship between nodes " + srcTopicId + " and " + dstTopicId);
         Relationship relationship = null;
         Node node = graphDb.getNodeById(srcTopicId);
         for (Relationship rel : node.getRelationships()) {
+            // do nodes match?
             Node relNode = rel.getOtherNode(node);
-            if (relNode.getId() == dstTopicId) {
-                relationship = rel;
-                break;
+            if (relNode.getId() != dstTopicId) {
+                continue;
             }
+            // apply type filter
+            if (typeId != null && !rel.getType().name().equals(typeId)) {
+                continue;
+            }
+            // apply direction filter
+            if (isDirected && rel.getStartNode().getId() != srcTopicId) {
+                continue;
+            }
+            // ambiguity?
+            if (relationship != null) {
+                throw new RuntimeException("Ambiguity: there are more than one relations");
+            }
+            //
+            relationship = rel;
         }
         if (relationship != null) {
             logger.info("=> relationship found (ID=" + relationship.getId() + ")");
             return buildRelation(relationship, true);
-        } else {
-            logger.info("=> no such relationship");
-            return null;
         }
+        logger.info("=> no such relationship");
+        return null;
     }
 
     @Override

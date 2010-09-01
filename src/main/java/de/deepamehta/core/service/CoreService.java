@@ -17,7 +17,14 @@ import java.util.Set;
 
 
 
-public interface DeepaMehtaService {
+/**
+ * Abstraction of the DeepaMehta core service -- the heart of DeepaMehta.
+ * The DeepaMehta core service provides methods to deal with topics, relations, types, commands, and plugins.
+ * <p>
+ * In the plugin developer's {@link Plugin} and {@link Migration} classes a core service instance is available
+ * through the <code>dms</code> object.
+ */
+public interface CoreService {
 
     // --- Topics ---
 
@@ -72,11 +79,14 @@ public interface DeepaMehtaService {
     public Relation getRelation(long id);
 
     /**
-     * Returns the relation between the two topics (regardless of type and direction).
-     * If no such relation exists null is returned.
-     * If more than one relation exists, only the first one is returned.
+     * Returns the relation between two topics. If no such relation exists null is returned.
+     * If more than one relation exists, an exception is thrown.
+     *
+     * @param   typeId      Relation type filter. Pass <code>null</code> to switch filter off.
+     * @param   isDirected  Direction filter. Pass <code>true</code> if direction matters. In this case the relation
+     *                      is expected to be directed <i>from</i> source topic <i>to</i> destination topic.
      */
-    public Relation getRelation(long srcTopicId, long dstTopicId);
+    public Relation getRelation(long srcTopicId, long dstTopicId, String typeId, boolean isDirected);
 
     public Relation createRelation(String typeId, long srcTopicId, long dstTopicId, Map properties);
 

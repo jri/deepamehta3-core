@@ -50,7 +50,7 @@ public class Plugin implements BundleActivator {
     private boolean isActivated;
 
     private ServiceTracker deepamehtaServiceTracker;
-    protected static DeepaMehtaService dms;
+    protected static CoreService dms;
 
     private ServiceTracker httpServiceTracker;
     private HttpService httpService;
@@ -115,8 +115,8 @@ public class Plugin implements BundleActivator {
     }
 
     // FIXME: drop method and make dms protected instead?
-    public static DeepaMehtaService getService() {
-        // DeepaMehtaService dms = (DeepaMehtaService) deepamehtaServiceTracker.getService();
+    public static CoreService getService() {
+        // CoreService dms = (CoreService) deepamehtaServiceTracker.getService();
         if (dms == null) {
             throw new RuntimeException("DeepaMehta core service is currently not available");
         }
@@ -205,12 +205,12 @@ public class Plugin implements BundleActivator {
 
 
     private ServiceTracker createDeepamehtaServiceTracker(BundleContext context) {
-        return new ServiceTracker(context, DeepaMehtaService.class.getName(), null) {
+        return new ServiceTracker(context, CoreService.class.getName(), null) {
 
             @Override
             public Object addingService(ServiceReference serviceRef) {
                 logger.info("Adding DeepaMehta core service to plugin \"" + pluginName + "\"");
-                dms = (DeepaMehtaService) super.addingService(serviceRef);
+                dms = (CoreService) super.addingService(serviceRef);
                 initPlugin();
                 return dms;
             }

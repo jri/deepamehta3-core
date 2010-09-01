@@ -5,7 +5,7 @@ import de.deepamehta.core.model.Topic;
 import de.deepamehta.core.model.TopicType;
 import de.deepamehta.core.model.RelatedTopic;
 import de.deepamehta.core.model.Relation;
-import de.deepamehta.core.service.DeepaMehtaService;
+import de.deepamehta.core.service.CoreService;
 import de.deepamehta.core.service.Migration;
 import de.deepamehta.core.service.Plugin;
 import de.deepamehta.core.storage.Storage;
@@ -38,7 +38,7 @@ import java.util.logging.Logger;
 
 
 
-public class EmbeddedService implements DeepaMehtaService {
+public class EmbeddedService implements CoreService {
 
     private static final String DATABASE_PATH = "deepamehta-db";
     private static final String CORE_MIGRATIONS_PACKAGE = "de.deepamehta.core.impl.migrations";
@@ -98,9 +98,9 @@ public class EmbeddedService implements DeepaMehtaService {
 
 
 
-    // ****************************************
-    // *** DeepaMehtaService Implementation ***
-    // ****************************************
+    // **********************************
+    // *** CoreService Implementation ***
+    // **********************************
 
 
 
@@ -353,17 +353,17 @@ public class EmbeddedService implements DeepaMehtaService {
     }
 
     @Override
-    public Relation getRelation(long srcTopicId, long dstTopicId) {
+    public Relation getRelation(long srcTopicId, long dstTopicId, String typeId, boolean isDirected) {
         Relation relation = null;
         RuntimeException ex = null;
         Transaction tx = storage.beginTx();
         try {
-            relation = storage.getRelation(srcTopicId, dstTopicId);
+            relation = storage.getRelation(srcTopicId, dstTopicId, typeId, isDirected);
             tx.success();
         } catch (Throwable e) {
             logger.warning("ROLLBACK!");
-            ex = new RuntimeException("Relation between topics " + srcTopicId +
-                " and " + dstTopicId + " can't be retrieved", e);
+            ex = new RuntimeException("Error while retrieving relation between topic " + srcTopicId +
+                " and topic " + dstTopicId + " (typeId=" + typeId + ", isDirected=" + isDirected + ")", e);
         } finally {
             tx.finish();
             if (ex == null) {
@@ -780,7 +780,7 @@ public class EmbeddedService implements DeepaMehtaService {
             if (hasImperativePart) {
                 Migration migration = (Migration) migrationClass.newInstance();
                 logger.info("Running " + type + " migration class " + migrationClass.getName());
-                migration.setDeepaMehtaService(this);
+                migration.setService(this);
                 migration.run();
             } else {
                 logger.info("No migration class for migration " + migrationNr + " found");

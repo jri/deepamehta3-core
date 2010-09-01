@@ -6,9 +6,9 @@ import de.deepamehta.core.service.Migration;
 
 public abstract class Migration {
     
-    protected DeepaMehtaService dms;
+    protected CoreService dms;
 
-    public void setDeepaMehtaService(DeepaMehtaService dms) {
+    public void setService(CoreService dms) {
         this.dms = dms;
     }
 

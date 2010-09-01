@@ -1,6 +1,6 @@
 package de.deepamehta.core.osgi;
 
-import de.deepamehta.core.service.DeepaMehtaService;
+import de.deepamehta.core.service.CoreService;
 import de.deepamehta.core.impl.EmbeddedService;
 
 import org.osgi.framework.BundleActivator;
@@ -17,7 +17,7 @@ public class Activator implements BundleActivator {
 
     private Logger logger = Logger.getLogger(getClass().getName());
 
-    private DeepaMehtaService service;
+    private CoreService service;
 
 
 
@@ -33,7 +33,7 @@ public class Activator implements BundleActivator {
             service = new EmbeddedService();
             //
             logger.info("Registering DeepaMehta core service");
-            context.registerService(DeepaMehtaService.class.getName(), service, null);
+            context.registerService(CoreService.class.getName(), service, null);
         } catch (RuntimeException e) {
             logger.severe("DeepaMehta core service can't be activated. Reason:");
             throw e;

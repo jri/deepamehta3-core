@@ -11,13 +11,13 @@ import java.util.Map;
 /**
  * A topic -- DeepaMehta's core data object.
  * A topic has an ID, a type, a label, a set of properties, and is related to other topics via {@link Relation}s.
- * <br><br>
+ * <p>
  * Instances of this class are used to pass data around (<i>data transfer object</i>).
- * <br><br>
+ * <p>
  * Note: instances of this class are not backed by a database.
  * That is, direct changes to a Topic object (e.g. by {@link #setProperty}) are not persistent.
  * To make persistent changes use the methods of the DeepaMehta core service
- * ({@link de.deepamehta.core.service.DeepaMehtaService}).
+ * ({@link de.deepamehta.core.service.CoreService}).
  *
  * @author <a href="mailto:jri@deepamehta.de">Jörg Richter</a>
  */

@@ -1,7 +1,6 @@
 package de.deepamehta.core.storage.neo4j;
 
 import de.deepamehta.core.model.TopicType;
-import de.deepamehta.core.service.DeepaMehtaService;
 
 import java.util.Collection;
 import java.util.HashMap;
