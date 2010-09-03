@@ -1,7 +1,9 @@
 package de.deepamehta.core.util;
 
+import java.io.UnsupportedEncodingException;
 import java.net.FileNameMap;
 import java.net.URLConnection;
+import java.net.URLEncoder;
 
 
 
@@ -25,5 +27,9 @@ public class JavaUtils {
 
     public static String getExtension(String fileName) {
         return fileName.substring(fileName.lastIndexOf(".") + 1).toLowerCase();
+    }
+
+    public static String encodeURIComponent(String uriComp) throws UnsupportedEncodingException {
+        return URLEncoder.encode(uriComp, "UTF-8").replaceAll("\\+", "%20");
     }
 }

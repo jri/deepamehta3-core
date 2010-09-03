@@ -19,10 +19,17 @@ import java.util.Set;
 
 /**
  * Abstraction of the DeepaMehta core service -- the heart of DeepaMehta.
+ * <p>
+ * The responsibility of the DeepaMehta core service is to orchestrate the control flow and allow plugins to hook in.
+ * The main tasks of the DeepaMehta core service are to provide access to the storage layer and to trigger hooks of
+ * the registered plugins.
+ * <p>
+ * The DeepaMehta core service is a realization of the <i>Inversion of Control</i> pattern.
+ * <p>
  * The DeepaMehta core service provides methods to deal with topics, relations, types, commands, and plugins.
  * <p>
- * In the plugin developer's {@link Plugin} and {@link Migration} classes a core service instance is available
- * through the <code>dms</code> object.
+ * Plugin developer notes: Inside the {@link Plugin} and {@link Migration} classes an instance of the DeepaMehta
+ * core service is available through the <code>dms</code> object.
  */
 public interface CoreService {
 
@@ -37,7 +44,7 @@ public interface CoreService {
     public List<Topic> getTopics(String typeUri);
 
     /**
-     * Retrives topics and relationships that are directly connected to the given topic, optionally filtered
+     * Retrieves topics and relationships that are directly connected to the given topic, optionally filtered
      * by topic types and relation types.
      *
      * IMPORTANT: the topics and relations returned by this method provide no properties.

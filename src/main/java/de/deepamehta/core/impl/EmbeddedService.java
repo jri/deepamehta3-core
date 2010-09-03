@@ -38,12 +38,21 @@ import java.util.logging.Logger;
 
 
 
+/**
+ * Implementation of the DeepaMehta core service. Embeddable into Java applications.
+ */
 public class EmbeddedService implements CoreService {
+
+    // ---------------------------------------------------------------------------------------------- Instance Variables
 
     private static final String DATABASE_PATH = "deepamehta-db";
     private static final String CORE_MIGRATIONS_PACKAGE = "de.deepamehta.core.impl.migrations";
     private static final int REQUIRED_CORE_MIGRATION = 1;
 
+    /**
+     * Registered plugins.
+     * Hashed by plugin bundle's symbolic name, e.g. "de.deepamehta.3-topicmaps".
+     */
     private Map<String, Plugin> plugins = new HashMap();
 
     private Storage storage;
@@ -71,6 +80,8 @@ public class EmbeddedService implements CoreService {
 
     private Logger logger = Logger.getLogger(getClass().getName());
 
+    // ---------------------------------------------------------------------------------------------------- Constructors
+
     public EmbeddedService() {
         try {
             openDB();
@@ -95,6 +106,8 @@ public class EmbeddedService implements CoreService {
             }
         }
     }
+
+    // -------------------------------------------------------------------------------------------------- Public Methods
 
 
 
@@ -663,6 +676,8 @@ public class EmbeddedService implements CoreService {
     public void shutdown() {
         closeDB();
     }
+
+    // ------------------------------------------------------------------------------------------------- Private Methods
 
 
 

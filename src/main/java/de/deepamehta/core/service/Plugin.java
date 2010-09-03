@@ -39,7 +39,7 @@ import java.net.URL;
  */
 public class Plugin implements BundleActivator {
 
-    private String pluginId;
+    private String pluginId;                    // Bundle's symbolic name.
     private String pluginName;
     private String pluginClass;
     private String pluginPackage;
