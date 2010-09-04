@@ -194,11 +194,13 @@ public class Neo4jStorage implements Storage {
     public void deleteTopic(long id) {
         logger.info("Deleting node " + id);
         Node node = graphDb.getNodeById(id);
-        // delete relationships
+        // 1) update index
+        removeFromIndex(node);
+        // 2) delete relationships
         for (Relationship rel : node.getRelationships()) {
             rel.delete();
         }
-        //
+        // 3) delete node
         node.delete();
     }
 
@@ -449,21 +451,57 @@ public class Neo4jStorage implements Storage {
 
     private void indexProperty(Node node, String key, Object value, String typeUri) {
         // Note: we only index instance nodes. Meta nodes (types) are responsible for indexing themself.
-        if (!typeUri.equals("de/deepamehta/core/topictype/TopicType")) {
-            DataField dataField = getTopicType(typeUri).getDataField(key);
+        if (typeUri.equals("de/deepamehta/core/topictype/TopicType")) {
+            return;
+        }
+        //
+        DataField dataField = getTopicType(typeUri).getDataField(key);
+        String indexingMode = dataField.getIndexingMode();
+        // 1) remove old value
+        removeFromIndex(node, key, indexingMode);
+        // 2) index new value
+        if (indexingMode.equals("OFF")) {
+            return;
+        } else if (indexingMode.equals("KEY")) {
+            index.index(node, key, value);
+        } else if (indexingMode.equals("FULLTEXT")) {
+            fulltextIndex.index(node, "default", value);
+        } else if (indexingMode.equals("FULLTEXT_KEY")) {
+            fulltextIndex.index(node, key, value);
+        } else {
+            throw new RuntimeException("Data field \"" + key + "\" of type definition \"" +
+                typeUri + "\" has unexpectd indexing mode: \"" + indexingMode + "\"");
+        }
+    }
+
+    // ---
+
+    private void removeFromIndex(Node node) {
+        // Note: we only index instance nodes. Meta nodes (types) are responsible for indexing themself.
+        if (isMetaNode(node)) {
+            return;
+        }
+        //
+        List<DataField> dataFields = getTopicType(getTypeUri(node)).getDataFields();
+        for (DataField dataField : dataFields) {
+            String key = dataField.getUri();
             String indexingMode = dataField.getIndexingMode();
-            if (indexingMode.equals("OFF")) {
-                return;
-            } else if (indexingMode.equals("KEY")) {
-                index.index(node, key, value);
-            } else if (indexingMode.equals("FULLTEXT")) {
-                fulltextIndex.index(node, "default", value);
-            } else if (indexingMode.equals("FULLTEXT_KEY")) {
-                fulltextIndex.index(node, key, value);
-            } else {
-                throw new RuntimeException("Data field \"" + key + "\" of type definition \"" +
-                    typeUri + "\" has unexpectd indexing mode: \"" + indexingMode + "\"");
-            }
+            removeFromIndex(node, key, indexingMode);
+        }
+    }
+
+    private void removeFromIndex(Node node, String key, String indexingMode) {
+        if (indexingMode.equals("OFF")) {
+            return;
+        } else if (indexingMode.equals("KEY")) {
+            index.removeIndex(node, key);
+        } else if (indexingMode.equals("FULLTEXT")) {
+            fulltextIndex.removeIndex(node, "default");
+        } else if (indexingMode.equals("FULLTEXT_KEY")) {
+            fulltextIndex.removeIndex(node, key);
+        } else {
+            throw new RuntimeException("Data field \"" + key + "\" has unexpectd indexing mode: \"" +
+                indexingMode + "\"");
         }
     }
 
@@ -496,6 +534,11 @@ public class Neo4jStorage implements Storage {
         }
         //
         return relation.getOtherNode(node);
+    }
+
+    private boolean isMetaNode(Node node) {
+        return node.hasRelationship(MetaModelRelTypes.META_CLASS,    Direction.INCOMING) ||
+               node.hasRelationship(MetaModelRelTypes.META_PROPERTY, Direction.INCOMING);
     }
 
     // ---
