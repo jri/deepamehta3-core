@@ -122,6 +122,17 @@ public class Neo4jStorage implements Storage {
     }
 
     @Override
+    public List<Topic> getTopics(String key, Object value) {
+        IndexHits<Node> nodes = index.getNodes(key, value);
+        logger.info("Getting nodes by property (" + key + "=" + value + ") => " + nodes.size() + " nodes");
+        List topics = new ArrayList();
+        for (Node node : nodes) {
+            topics.add(buildTopic(node, false));    // properties remain uninitialized
+        }
+        return topics;
+    }
+
+    @Override
     public List<RelatedTopic> getRelatedTopics(long topicId, List<String> includeTopicTypes,
                                                              List<String> includeRelTypes,
                                                              List<String> excludeRelTypes) {
@@ -156,22 +167,21 @@ public class Neo4jStorage implements Storage {
     public List<Topic> searchTopics(String searchTerm, String fieldUri, boolean wholeWord) {
         if (fieldUri == null) fieldUri = "default";
         if (!wholeWord) searchTerm += "*";
-        IndexHits<Node> hits = fulltextIndex.getNodes(fieldUri, searchTerm);
-        logger.info("Searching \"" + searchTerm + "\" in field \"" + fieldUri + "\" => " + hits.size() + " nodes");
-        List result = new ArrayList();
-        for (Node node : hits) {
+        IndexHits<Node> nodes = fulltextIndex.getNodes(fieldUri, searchTerm);
+        logger.info("Searching \"" + searchTerm + "\" in field \"" + fieldUri + "\" => " + nodes.size() + " nodes");
+        List topics = new ArrayList();
+        for (Node node : nodes) {
             logger.fine("Adding node " + node.getId());
             // Filter result set. Note: a search should not find other searches.
             //
             // TODO: drop this filter. Items not intended for being find should not be indexed at all. Model change
             // required: the indexing mode must be specified per topic type/data field pair instead per data field.
             if (!getTypeUri(node).equals("de/deepamehta/core/topictype/SearchResult")) {
-                // FIXME: type, label, and properties remain uninitialized
-                result.add(new Topic(node.getId(), null, null, null));
+                topics.add(buildTopic(node, false));    // properties remain uninitialized
             }
         }
-        logger.info("After filtering => " + result.size() + " nodes");
-        return result;
+        logger.info("After filtering => " + topics.size() + " nodes");
+        return topics;
     }
 
     @Override

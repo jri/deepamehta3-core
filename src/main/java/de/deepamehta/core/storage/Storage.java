@@ -22,7 +22,7 @@ public interface Storage {
     public Topic getTopic(long id);
 
     /**
-     * Looks up a topic by exact property value.
+     * Looks up a single topic by exact property value.
      * If no such topic exists <code>null</code> is returned.
      * If more than one topic is found a runtime exception is thrown.
      * <p>
@@ -40,6 +40,18 @@ public interface Storage {
     public Object getTopicProperty(long topicId, String key);
 
     public List<Topic> getTopics(String typeUri);
+
+    /**
+     * Looks up topics by exact property value.
+     * If no such topics exists an empty list is returned.
+     * <p>
+     * IMPORTANT: Looking up a topic this way requires the property to be indexed with indexing mode <code>KEY</code>.
+     * This is achieved by declaring the respective data field with <code>indexing_mode: "KEY"</code>
+     * (for statically declared data field, typically in <code>types.json</code>) or
+     * by calling DataField's {@link DataField#setIndexingMode} method with <code>"KEY"</code> as argument
+     * (for dynamically created data fields, typically in migration classes).
+     */
+    public List<Topic> getTopics(String key, Object value);
 
     public List<RelatedTopic> getRelatedTopics(long topicId, List<String> includeTopicTypes,
                                                              List<String> includeRelTypes,

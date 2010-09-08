@@ -153,7 +153,7 @@ public class EmbeddedService implements CoreService {
             tx.success();   
         } catch (Throwable e) {
             logger.warning("ROLLBACK!");
-            ex = new RuntimeException("Topic can't be retrieved (tried by property \"" + key + "\"=" + value + ")", e);
+            ex = new RuntimeException("Error while retrieving topic by property (\"" + key + "\"=" + value + ")", e);
         } finally {
             tx.finish();
             if (ex == null) {
@@ -201,6 +201,27 @@ public class EmbeddedService implements CoreService {
         } catch (Throwable e) {
             logger.warning("ROLLBACK!");
             ex = new RuntimeException("Topics of type \"" + typeUri + "\" can't be retrieved", e);
+        } finally {
+            tx.finish();
+            if (ex == null) {
+                return topics;
+            } else {
+                throw ex;
+            }
+        }
+    }
+
+    @Override
+    public List<Topic> getTopics(String key, Object value) {
+        List<Topic> topics = null;
+        RuntimeException ex = null;
+        Transaction tx = storage.beginTx();
+        try {
+            topics = storage.getTopics(key, value);
+            tx.success();   
+        } catch (Throwable e) {
+            logger.warning("ROLLBACK!");
+            ex = new RuntimeException("Error while retrieving topics by property (\"" + key + "\"=" + value + ")", e);
         } finally {
             tx.finish();
             if (ex == null) {

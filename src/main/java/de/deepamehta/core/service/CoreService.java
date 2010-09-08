@@ -18,10 +18,10 @@ import java.util.Set;
 
 
 /**
- * Abstraction of the DeepaMehta core service -- the heart of DeepaMehta.
+ * Specification of the DeepaMehta core service -- the heart of DeepaMehta.
  * <p>
  * The responsibility of the DeepaMehta core service is to orchestrate the control flow and allow plugins to hook in.
- * The main tasks of the DeepaMehta core service are to provide access to the storage layer and to trigger hooks of
+ * The main duties of the DeepaMehta core service are to provide access to the storage layer and to trigger hooks of
  * the registered plugins.
  * <p>
  * The DeepaMehta core service is a realization of the <i>Inversion of Control</i> pattern.
@@ -37,11 +37,34 @@ public interface CoreService {
 
     public Topic getTopic(long id);
 
+    /**
+     * Looks up a single topic by exact property value.
+     * If no such topic exists <code>null</code> is returned.
+     * If more than one topic is found a runtime exception is thrown.
+     * <p>
+     * IMPORTANT: Looking up a topic this way requires the property to be indexed with indexing mode <code>KEY</code>.
+     * This is achieved by declaring the respective data field with <code>indexing_mode: "KEY"</code>
+     * (for statically declared data field, typically in <code>types.json</code>) or
+     * by calling DataField's {@link DataField#setIndexingMode} method with <code>"KEY"</code> as argument
+     * (for dynamically created data fields, typically in migration classes).
+     */
     public Topic getTopic(String key, Object value);
 
     public Object getTopicProperty(long topicId, String key);
 
     public List<Topic> getTopics(String typeUri);
+
+    /**
+     * Looks up topics by exact property value.
+     * If no such topics exists an empty list is returned.
+     * <p>
+     * IMPORTANT: Looking up a topic this way requires the property to be indexed with indexing mode <code>KEY</code>.
+     * This is achieved by declaring the respective data field with <code>indexing_mode: "KEY"</code>
+     * (for statically declared data field, typically in <code>types.json</code>) or
+     * by calling DataField's {@link DataField#setIndexingMode} method with <code>"KEY"</code> as argument
+     * (for dynamically created data fields, typically in migration classes).
+     */
+    public List<Topic> getTopics(String key, Object value);
 
     /**
      * Retrieves topics and relationships that are directly connected to the given topic, optionally filtered
