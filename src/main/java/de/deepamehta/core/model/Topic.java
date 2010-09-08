@@ -84,6 +84,8 @@ public class Topic {
         return o;
     }
 
+    // ---
+
     @Override
     public String toString() {
         return "topic " + id + " \"" + label + "\" (typeUri=" + typeUri + ")";

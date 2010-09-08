@@ -192,15 +192,13 @@ public class Neo4jStorage implements Storage {
 
     @Override
     public void deleteTopic(long id) {
+        // Note: when this is called all the topic's relations are already deleted.
+        // So we can't determine the topic's type anymore (and thus can't determine the index modes).
         logger.info("Deleting node " + id);
         Node node = graphDb.getNodeById(id);
-        // 1) update index
+        // update index
         removeFromIndex(node);
-        // 2) delete relationships
-        for (Relationship rel : node.getRelationships()) {
-            rel.delete();
-        }
-        // 3) delete node
+        //
         node.delete();
     }
 
@@ -245,6 +243,16 @@ public class Neo4jStorage implements Storage {
         }
         logger.info("=> no such relationship");
         return null;
+    }
+
+    @Override
+    public Set<Relation> getRelations(long topicId) {
+        Set relations = new HashSet();
+        Node node = graphDb.getNodeById(topicId);
+        for (Relationship rel : node.getRelationships()) {
+            relations.add(buildRelation(rel, false));
+        }
+        return relations;
     }
 
     @Override
@@ -454,12 +462,11 @@ public class Neo4jStorage implements Storage {
         if (typeUri.equals("de/deepamehta/core/topictype/TopicType")) {
             return;
         }
-        //
+        // 1) remove old value
+        removeFromIndex(node, key);
+        // 2) index new value
         DataField dataField = getTopicType(typeUri).getDataField(key);
         String indexingMode = dataField.getIndexingMode();
-        // 1) remove old value
-        removeFromIndex(node, key, indexingMode);
-        // 2) index new value
         if (indexingMode.equals("OFF")) {
             return;
         } else if (indexingMode.equals("KEY")) {
@@ -477,32 +484,17 @@ public class Neo4jStorage implements Storage {
     // ---
 
     private void removeFromIndex(Node node) {
-        // Note: we only index instance nodes. Meta nodes (types) are responsible for indexing themself.
-        if (isMetaNode(node)) {
-            return;
-        }
-        //
-        List<DataField> dataFields = getTopicType(getTypeUri(node)).getDataFields();
-        for (DataField dataField : dataFields) {
-            String key = dataField.getUri();
-            String indexingMode = dataField.getIndexingMode();
-            removeFromIndex(node, key, indexingMode);
+        for (String key : node.getPropertyKeys()) {
+            removeFromIndex(node, key);
         }
     }
 
-    private void removeFromIndex(Node node, String key, String indexingMode) {
-        if (indexingMode.equals("OFF")) {
-            return;
-        } else if (indexingMode.equals("KEY")) {
-            index.removeIndex(node, key);
-        } else if (indexingMode.equals("FULLTEXT")) {
-            fulltextIndex.removeIndex(node, "default");
-        } else if (indexingMode.equals("FULLTEXT_KEY")) {
-            fulltextIndex.removeIndex(node, key);
-        } else {
-            throw new RuntimeException("Data field \"" + key + "\" has unexpectd indexing mode: \"" +
-                indexingMode + "\"");
-        }
+    private void removeFromIndex(Node node, String key) {
+        // Note: we don't know the index mode so we just remove for every mode.
+        // (In conjunction with node deletion it would not be easy to tell the index mode.)
+        index.removeIndex(node, key);
+        fulltextIndex.removeIndex(node, "default");
+        fulltextIndex.removeIndex(node, key);
     }
 
     // --- Types ---
@@ -536,10 +528,11 @@ public class Neo4jStorage implements Storage {
         return relation.getOtherNode(node);
     }
 
+    /* FIXME: not in use
     private boolean isMetaNode(Node node) {
         return node.hasRelationship(MetaModelRelTypes.META_CLASS,    Direction.INCOMING) ||
                node.hasRelationship(MetaModelRelTypes.META_PROPERTY, Direction.INCOMING);
-    }
+    } */
 
     // ---
 

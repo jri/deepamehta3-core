@@ -39,6 +39,8 @@ import java.net.URL;
  */
 public class Plugin implements BundleActivator {
 
+    // ---------------------------------------------------------------------------------------------- Instance Variables
+
     private String pluginId;                    // Bundle's symbolic name.
     private String pluginName;
     private String pluginClass;
@@ -57,13 +59,7 @@ public class Plugin implements BundleActivator {
 
     private Logger logger = Logger.getLogger(getClass().getName());
 
-
-
-    // ************************
-    // *** Public Accessors ***
-    // ************************
-
-
+    // -------------------------------------------------------------------------------------------------- Public Methods
 
     public String getName() {
         return pluginName;
@@ -184,6 +180,14 @@ public class Plugin implements BundleActivator {
 
     // ---
 
+    public void preDeleteRelationHook(long relationId) {
+    }
+
+    public void postDeleteRelationHook(long relationId) {
+    }
+
+    // ---
+
     public void providePropertiesHook(Topic topic) {
     }
 
@@ -196,13 +200,7 @@ public class Plugin implements BundleActivator {
         return null;
     }
 
-
-
-    // ***********************
-    // *** Private Helpers ***
-    // ***********************
-
-
+    // ------------------------------------------------------------------------------------------------- Private Methods
 
     private ServiceTracker createDeepamehtaServiceTracker(BundleContext context) {
         return new ServiceTracker(context, CoreService.class.getName(), null) {

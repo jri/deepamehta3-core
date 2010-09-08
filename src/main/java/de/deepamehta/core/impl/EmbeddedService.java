@@ -59,10 +59,13 @@ public class EmbeddedService implements CoreService {
 
     private enum Hook {
 
-        PRE_CREATE("preCreateHook",   Topic.class, Map.class),
-        POST_CREATE("postCreateHook", Topic.class, Map.class),
-        PRE_UPDATE("preUpdateHook",   Topic.class, Map.class),
-        POST_UPDATE("postUpdateHook", Topic.class, Map.class),
+         PRE_CREATE_TOPIC("preCreateHook",  Topic.class, Map.class),
+        POST_CREATE_TOPIC("postCreateHook", Topic.class, Map.class),
+         PRE_UPDATE_TOPIC("preUpdateHook",  Topic.class, Map.class),
+        POST_UPDATE_TOPIC("postUpdateHook", Topic.class, Map.class),
+
+         PRE_DELETE_RELATION("preDeleteRelationHook", Long.TYPE),
+        POST_DELETE_RELATION("postDeleteRelationHook", Long.TYPE),
 
         PROVIDE_TOPIC_PROPERTIES("providePropertiesHook", Topic.class),
         PROVIDE_RELATION_PROPERTIES("providePropertiesHook", Relation.class),
@@ -277,11 +280,11 @@ public class EmbeddedService implements CoreService {
         try {
             Topic t = new Topic(-1, typeUri, null, initProperties(properties, typeUri));
             //
-            triggerHook(Hook.PRE_CREATE, t, clientContext);
+            triggerHook(Hook.PRE_CREATE_TOPIC, t, clientContext);
             //
             topic = storage.createTopic(t.typeUri, t.getProperties());
             //
-            triggerHook(Hook.POST_CREATE, topic, clientContext);
+            triggerHook(Hook.POST_CREATE_TOPIC, topic, clientContext);
             //
             tx.success();
         } catch (Throwable e) {
@@ -305,12 +308,12 @@ public class EmbeddedService implements CoreService {
             Topic topic = getTopic(id);
             Map oldProperties = topic.getProperties();
             //
-            triggerHook(Hook.PRE_UPDATE, topic, properties);
+            triggerHook(Hook.PRE_UPDATE_TOPIC, topic, properties);
             //
             storage.setTopicProperties(id, properties);
             //
             topic.setProperties(properties);
-            triggerHook(Hook.POST_UPDATE, topic, oldProperties);
+            triggerHook(Hook.POST_UPDATE_TOPIC, topic, oldProperties);
             //
             tx.success();   
         } catch (Throwable e) {
@@ -329,6 +332,11 @@ public class EmbeddedService implements CoreService {
         RuntimeException ex = null;
         Transaction tx = storage.beginTx();
         try {
+            // delete all the topic's relationships
+            for (Relation rel : storage.getRelations(id)) {
+                deleteRelation(rel.id);
+            }
+            //
             storage.deleteTopic(id);
             tx.success();
         } catch (Throwable e) {
@@ -434,7 +442,12 @@ public class EmbeddedService implements CoreService {
         RuntimeException ex = null;
         Transaction tx = storage.beginTx();
         try {
+            triggerHook(Hook.PRE_DELETE_RELATION, id);
+            //
             storage.deleteRelation(id);
+            //
+            triggerHook(Hook.POST_DELETE_RELATION, id);
+            //
             tx.success();
         } catch (Throwable e) {
             logger.warning("ROLLBACK!");
@@ -499,7 +512,7 @@ public class EmbeddedService implements CoreService {
         try {
             TopicType tt = new TopicType(properties, dataFields);
             //
-            triggerHook(Hook.PRE_CREATE, tt, null);  // FIXME: clientContext=null
+            triggerHook(Hook.PRE_CREATE_TOPIC, tt, null);  // FIXME: clientContext=null
             //
             topicType = storage.createTopicType(properties, dataFields);
             //
@@ -678,14 +691,6 @@ public class EmbeddedService implements CoreService {
     }
 
     // ------------------------------------------------------------------------------------------------- Private Methods
-
-
-
-    // ************************
-    // *** Private Helpers ****
-    // ************************
-
-
 
     // --- Topics ---
 

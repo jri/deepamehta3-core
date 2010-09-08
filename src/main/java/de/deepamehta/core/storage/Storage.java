@@ -52,7 +52,9 @@ public interface Storage {
     public void setTopicProperties(long id, Map properties);
 
     /**
-     * Deletes the topic and all of its relations.
+     * Deletes the topic.
+     * <p>
+     * Prerequisite: the topic has no relations.
      */
     public void deleteTopic(long id);
 
@@ -69,6 +71,8 @@ public interface Storage {
      *                      is expected to be directed <i>from</i> source topic <i>to</i> destination topic.
      */
     public Relation getRelation(long srcTopicId, long dstTopicId, String typeId, boolean isDirected);
+
+    public Set<Relation> getRelations(long topicId);
 
     public Relation createRelation(String typeId, long srcTopicId, long dstTopicId, Map properties);
 
