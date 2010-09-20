@@ -112,7 +112,10 @@ public interface Storage {
 
     public Transaction beginTx();
 
-    public void init();
+    /**
+     * @return  <code>true</code> if this is a clean install, <code>false</code> otherwise.
+     */
+    public boolean init();
 
     public void shutdown();
 

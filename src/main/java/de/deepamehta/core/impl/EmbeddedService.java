@@ -33,6 +33,7 @@ import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.Properties;
 import java.util.Set;
 import java.util.logging.Logger;
 
@@ -43,11 +44,13 @@ import java.util.logging.Logger;
  */
 public class EmbeddedService implements CoreService {
 
-    // ---------------------------------------------------------------------------------------------- Instance Variables
+    // ------------------------------------------------------------------------------------------------------- Constants
 
     private static final String DATABASE_PATH = "deepamehta-db";
     private static final String CORE_MIGRATIONS_PACKAGE = "de.deepamehta.core.impl.migrations";
     private static final int REQUIRED_CORE_MIGRATION = 1;
+
+    // ---------------------------------------------------------------------------------------------- Instance Variables
 
     /**
      * Registered plugins.
@@ -81,6 +84,10 @@ public class EmbeddedService implements CoreService {
         }
     }
 
+    private enum MigrationRunMode {
+        CLEAN_INSTALL, UPDATE, ALWAYS
+    }
+
     private Logger logger = Logger.getLogger(getClass().getName());
 
     // ---------------------------------------------------------------------------------------------------- Constructors
@@ -95,8 +102,8 @@ public class EmbeddedService implements CoreService {
         RuntimeException ex = null;
         Transaction tx = storage.beginTx();
         try {
-            initDB();
-            runCoreMigrations();
+            boolean isCleanInstall = initDB();
+            runCoreMigrations(isCleanInstall);
             tx.success();   
         } catch (Throwable e) {
             logger.warning("ROLLBACK!");
@@ -120,7 +127,7 @@ public class EmbeddedService implements CoreService {
 
 
 
-    // --- Topics ---
+    // === Topics ===
 
     @Override
     public Topic getTopic(long id) {
@@ -371,7 +378,7 @@ public class EmbeddedService implements CoreService {
         }
     }
 
-    // --- Relations ---
+    // === Relations ===
 
     @Override
     public Relation getRelation(long id) {
@@ -481,7 +488,7 @@ public class EmbeddedService implements CoreService {
         }
     }
 
-    // --- Types ---
+    // === Types ===
 
     @Override
     public Set<String> getTopicTypeUris() {
@@ -627,7 +634,7 @@ public class EmbeddedService implements CoreService {
         }
     }
 
-    // --- Commands ---
+    // === Commands ===
 
     @Override
     public JSONObject executeCommand(String command, Map params, Map clientContext) {
@@ -658,7 +665,7 @@ public class EmbeddedService implements CoreService {
         }
     }
 
-    // --- Plugins ---
+    // === Plugins ===
 
     @Override
     public void registerPlugin(String pluginId, Plugin plugin) {
@@ -686,11 +693,11 @@ public class EmbeddedService implements CoreService {
      * Runs a plugin migration in a transaction.
      */
     @Override
-    public void runPluginMigration(Plugin plugin, int migrationNr) {
+    public void runPluginMigration(Plugin plugin, int migrationNr, boolean isCleanInstall) {
         RuntimeException ex = null;
         Transaction tx = storage.beginTx();
         try {
-            runMigration(migrationNr, plugin);
+            runMigration(migrationNr, plugin, isCleanInstall);
             setPluginMigrationNr(plugin, migrationNr);
             //
             tx.success();
@@ -704,7 +711,7 @@ public class EmbeddedService implements CoreService {
         }
     }
 
-    // --- Misc ---
+    // === Misc ===
 
     @Override
     public void shutdown() {
@@ -713,7 +720,7 @@ public class EmbeddedService implements CoreService {
 
     // ------------------------------------------------------------------------------------------------- Private Methods
 
-    // --- Topics ---
+    // === Topics ===
 
     // FIXME: method to be dropped. Missing properties are regarded as normal state.
     // Otherwise all instances would be required to be updated once a data field has been added to the type definition.
@@ -730,7 +737,7 @@ public class EmbeddedService implements CoreService {
         return properties;
     }
 
-    // --- Plugins ---
+    // === Plugins ===
 
     private Set triggerHook(Hook hook, Object... params) throws NoSuchMethodException,
                                                                 IllegalAccessException,
@@ -752,89 +759,88 @@ public class EmbeddedService implements CoreService {
         setTopicProperties(plugin.getPluginTopic().id, properties);
     }
 
-    // --- DB ---
+    // === DB ===
 
     private void openDB() {
         storage = new Neo4jStorage(DATABASE_PATH);
     }
 
-    private void initDB() {
-        storage.init();
+    /**
+     * @return  <code>true</code> if this is a clean install, <code>false</code> otherwise.
+     */
+    private boolean initDB() {
+        return storage.init();
     }
 
     private void closeDB() {
         storage.shutdown();
     }
 
-    // --- Migrations ---
+    // === Migrations ===
 
-    private void runCoreMigrations() {
+    private void runCoreMigrations(boolean isCleanInstall) {
         int migrationNr = storage.getMigrationNr();
         int requiredMigrationNr = REQUIRED_CORE_MIGRATION;
         int migrationsToRun = requiredMigrationNr - migrationNr;
         logger.info("migrationNr=" + migrationNr + ", requiredMigrationNr=" + requiredMigrationNr +
             " => Running " + migrationsToRun + " core migrations");
         for (int i = migrationNr + 1; i <= requiredMigrationNr; i++) {
-            runCoreMigration(i);
+            runCoreMigration(i, isCleanInstall);
         }
     }
 
-    private void runCoreMigration(int migrationNr) {
-        runMigration(migrationNr, null);
+    private void runCoreMigration(int migrationNr, boolean isCleanInstall) {
+        runMigration(migrationNr, null, isCleanInstall);
         storage.setMigrationNr(migrationNr);
     }
+
+    // ---
 
     /**
      * Runs a core migration or a plugin migration.
      *
-     * @param   plugin  <code>null</code> for a core migration.
+     * @param   migrationNr     Number of the migration to run.
+     * @param   plugin          The plugin that provides the migration to run.
+     *                          <code>null</code> for a core migration.
+     * @param   isCleanInstall  <code>true</code> if the migration is run as part of a clean install,
+     *                          <code>false</code> if the migration is run as part of an update.
      */
-    private void runMigration(int migrationNr, Plugin plugin) {
-        String migrationInfo = null;                            // for reporting only
+    private void runMigration(int migrationNr, Plugin plugin, boolean isCleanInstall) {
+        MigrationInfo mi = null;
         try {
-            Class migrationClass = null;                        // for the imperative part
-            InputStream is = null;                              // for the declarative part
-            String typesFile = migrationFileName(migrationNr);  // for the declarative part
-            String type = plugin != null ? "plugin" : "core";
-            // initialize type-specific variables
-            if (type.equals("core")) {
-                migrationInfo = "core migration " + migrationNr;
-                logger.info("Running " + migrationInfo);
-                is = getClass().getResourceAsStream(typesFile);
-                String migrationClassName = CORE_MIGRATIONS_PACKAGE + ".Migration" + migrationNr;
-                migrationClass = getClassOrNull(migrationClassName);
-            } else if (type.equals("plugin")) {
-                migrationInfo = "migration " + migrationNr + " of plugin \"" + plugin.getName() + "\"";
-                logger.info("Running " + migrationInfo);
-                is = plugin.getResourceAsStream(typesFile);
-                migrationClass = plugin.getMigrationClass(migrationNr);
+            mi = new MigrationInfo(migrationNr, plugin);
+            if (!mi.success) {
+                throw mi.exception;
             }
-            // 1) run declarative part
-            boolean hasDeclarativePart = is != null;
-            if (hasDeclarativePart) {
-                readTypesFromFile(is, typesFile);
+            // error checks
+            if (!mi.isDeclarative && !mi.isImperative) {
+                throw new RuntimeException("Neither a types file \"" + mi.typesFile +
+                    "\" nor a migration class " + mi.migrationClass.getName() + " is found");
+            }
+            if (mi.isDeclarative && mi.isImperative) {
+                throw new RuntimeException("Ambiguity: a types file (" + mi.typesFile +
+                    ") AND a migration class (" + mi.migrationClass.getName() + ") are found");
+            }
+            // run migration
+            if (mi.runMode.equals(MigrationRunMode.CLEAN_INSTALL.name()) == isCleanInstall ||
+                mi.runMode.equals(MigrationRunMode.ALWAYS.name())) {
+                logger.info("Running " + mi.migrationInfo);
+                if (mi.isDeclarative) {
+                    readTypesFromFile(mi.typesIn, mi.typesFile);
+                } else {
+                    Migration migration = (Migration) mi.migrationClass.newInstance();
+                    logger.info("Running " + mi.migrationType + " migration class " + mi.migrationClass.getName());
+                    migration.setService(this);
+                    migration.run();
+                }
+                logger.info(mi.migrationType + " migration complete");
             } else {
-                logger.info("No resource file found (tried \"" + typesFile + "\")");
+                logger.info("Do NOT run " + mi.migrationInfo + " (runMode=" + mi.runMode +
+                    ", isCleanInstall=" + isCleanInstall + ")");
             }
-            // 2) run imperative part
-            boolean hasImperativePart = migrationClass != null;
-            if (hasImperativePart) {
-                Migration migration = (Migration) migrationClass.newInstance();
-                logger.info("Running " + type + " migration class " + migrationClass.getName());
-                migration.setService(this);
-                migration.run();
-            } else {
-                logger.info("No migration class for migration " + migrationNr + " found");
-            }
-            // error check
-            if (!hasDeclarativePart && !hasImperativePart) {
-                throw new RuntimeException("Neither a resource file \"" + typesFile +
-                    "\" nor a migration class " + migrationClass.getName() + " is found");
-            }
-            //
-            logger.info(type + " migration complete -- Updating migration number (" + migrationNr + ")");
+            logger.info("Updating migration number (" + migrationNr + ")");
         } catch (Throwable e) {
-            throw new RuntimeException("Error while running " + migrationInfo, e);
+            throw new RuntimeException("Error while running " + mi.migrationInfo, e);
         }
     }
 
@@ -845,7 +851,7 @@ public class EmbeddedService implements CoreService {
      */
     private void readTypesFromFile(InputStream is, String typesFileName) {
         try {
-            logger.info("Reading types from resource file \"" + typesFileName + "\"");
+            logger.info("Reading types from file \"" + typesFileName + "\"");
             BufferedReader in = new BufferedReader(new InputStreamReader(is));
             String line;
             StringBuilder json = new StringBuilder();
@@ -854,7 +860,7 @@ public class EmbeddedService implements CoreService {
             }
             createTypes(json.toString());
         } catch (Throwable e) {
-            throw new RuntimeException("Error while reading resource file \"" + typesFileName + "\"", e);
+            throw new RuntimeException("Error while reading types file \"" + typesFileName + "\"", e);
         }
     }
 
@@ -866,20 +872,108 @@ public class EmbeddedService implements CoreService {
         }
     }
 
-    private String migrationFileName(int migrationNr) {
-        return "/types" + migrationNr + ".json";
-    }
-
-    // --- Generic Utilities ---
+    // ---
 
     /**
-     * Uses the core bundle's class loader to load a class by name.
+     * Collects the info required to run a migration.
      */
-    private Class getClassOrNull(String className) {
-        try {
-            return Class.forName(className);
-        } catch (ClassNotFoundException e) {
-            return null;
+    private class MigrationInfo {
+
+        String migrationType;   // "core", "plugin"
+        String migrationInfo;   // for logging
+        String runMode;         // "CLEAN_INSTALL", "UPDATE", "ALWAYS"
+        //
+        boolean isDeclarative;
+        boolean isImperative;
+        //
+        String typesFile;       // for declarative migration
+        InputStream typesIn;    // for declarative migration
+        //
+        Class migrationClass;   // for imperative migration
+        //
+        boolean success;        // error occurred?
+        Throwable exception;    // the error
+
+        MigrationInfo(int migrationNr, Plugin plugin) {
+            try {
+                String configFile = migrationConfigFile(migrationNr);
+                InputStream configIn;
+                typesFile = migrationTypesFile(migrationNr);
+                migrationType = plugin != null ? "plugin" : "core";
+                //
+                if (migrationType.equals("core")) {
+                    migrationInfo = "core migration " + migrationNr;
+                    logger.info("Preparing " + migrationInfo + " ...");
+                    configIn = getClass().getResourceAsStream(configFile);
+                    typesIn  = getClass().getResourceAsStream(typesFile);
+                    migrationClass = getClassOrNull(coreMigrationClass(migrationNr));
+                } else {
+                    migrationInfo = "migration " + migrationNr + " of plugin \"" + plugin.getName() + "\"";
+                    logger.info("Preparing " + migrationInfo + " ...");
+                    configIn = plugin.getResourceAsStream(configFile);
+                    typesIn  = plugin.getResourceAsStream(typesFile);
+                    migrationClass = plugin.getMigrationClass(migrationNr);
+                }
+                //
+                isDeclarative = typesIn != null;
+                isImperative = migrationClass != null;
+                //
+                readMigrationConfigFile(configIn, configFile);
+                //
+                success = true;
+            } catch (Throwable e) {
+                exception = e;
+            }
+        }
+
+        // ---
+
+        private void readMigrationConfigFile(InputStream in, String configFile) {
+            try {
+                Properties migrationConfig = new Properties();
+                if (in != null) {
+                    logger.info("Reading migration config file \"" + configFile + "\"");
+                    migrationConfig.load(in);
+                } else {
+                    logger.info("No migration config file found (tried \"" + configFile + "\")" +
+                        " -- Using default configuration");
+                }
+                //
+                runMode = migrationConfig.getProperty("migrationRunMode", MigrationRunMode.ALWAYS.name());
+                MigrationRunMode.valueOf(runMode);  // check if value is valid
+            } catch (IllegalArgumentException e) {
+                throw new RuntimeException("Error in config file \"" + configFile + "\": \"" + runMode +
+                    "\" is an invalid value for \"migrationRunMode\"");
+            } catch (IOException e) {
+                throw new RuntimeException("Config file \"" + configFile + "\" can't be read", e);
+            }
+        }
+
+        // ---
+
+        private String migrationTypesFile(int migrationNr) {
+            return "/types" + migrationNr + ".json";
+        }
+
+        private String migrationConfigFile(int migrationNr) {
+            return "/migration" + migrationNr + ".properties";
+        }
+
+        private String coreMigrationClass(int migrationNr) {
+            return CORE_MIGRATIONS_PACKAGE + ".Migration" + migrationNr;
+        }
+
+        // --- Generic Utilities ---
+
+        /**
+         * Uses the core bundle's class loader to load a class by name.
+         */
+        private Class getClassOrNull(String className) {
+            try {
+                return Class.forName(className);
+            } catch (ClassNotFoundException e) {
+                return null;
+            }
         }
     }
 }

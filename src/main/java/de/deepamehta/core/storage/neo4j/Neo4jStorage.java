@@ -342,7 +342,7 @@ public class Neo4jStorage implements Storage {
      * Performs storage layer initialization which is required to run in a transaction.
      */
     @Override
-    public void init() {
+    public boolean init() {
         // 1) init indexing services
         index = new LuceneIndexService(graphDb);
         fulltextIndex = new LuceneFulltextQueryIndexService(graphDb);
@@ -353,7 +353,9 @@ public class Neo4jStorage implements Storage {
         if (!graphDb.getReferenceNode().hasProperty("core_migration_nr")) {
             logger.info("Starting with a fresh DB -- Setting migration number to 0");
             setMigrationNr(0);
+            return true;
         }
+        return false;
     }
 
     @Override

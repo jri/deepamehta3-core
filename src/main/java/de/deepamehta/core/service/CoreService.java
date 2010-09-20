@@ -154,7 +154,7 @@ public interface CoreService {
 
     public Plugin getPlugin(String pluginId);
 
-    public void runPluginMigration(Plugin plugin, int migrationNr);
+    public void runPluginMigration(Plugin plugin, int migrationNr, boolean isCleanInstall);
 
     // --- Misc ---
 

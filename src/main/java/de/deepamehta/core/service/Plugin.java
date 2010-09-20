@@ -39,6 +39,10 @@ import java.net.URL;
  */
 public class Plugin implements BundleActivator {
 
+    // ------------------------------------------------------------------------------------------------------- Constants
+
+    private static final String PLUGIN_CONFIG_FILE = "/plugin.properties";
+
     // ---------------------------------------------------------------------------------------------- Instance Variables
 
     private String pluginId;                    // Bundle's symbolic name.
@@ -102,6 +106,9 @@ public class Plugin implements BundleActivator {
      * @return  A InputStream object or null if no resource with this name is found.
      */
     public InputStream getResourceAsStream(String name) throws IOException {
+        // We always use the plugin bundle's class loader to access the resource.
+        // getClass().getResource() would fail for generic plugins (plugin bundles not containing a plugin
+        // subclass) because the core bundle's class loader would be used and it has no access.
         URL url = pluginBundle.getResource(name);
         if (url != null) {
             return url.openStream();
@@ -319,16 +326,13 @@ public class Plugin implements BundleActivator {
     private Properties readConfigFile() {
         try {
             Properties properties = new Properties();
-            // We always use the plugin bundle's classloader to access the config file.
-            // getClass().getResource() would fail for generic plugins (plugin bundles not containing a plugin
-            // subclass) because the core bundle's classloader would be used and it has no access.
-            URL url = pluginBundle.getResource("/plugin.properties");
-            if (url != null) {
-                InputStream in = url.openStream();
-                logger.info("Reading plugin config file \"/plugin.properties\"");
+            InputStream in = getResourceAsStream(PLUGIN_CONFIG_FILE);
+            if (in != null) {
+                logger.info("Reading plugin config file \"" + PLUGIN_CONFIG_FILE + "\"");
                 properties.load(in);
             } else {
-                logger.info("No plugin config file found -- Using default configuration");
+                logger.info("No plugin config file found (tried \"" + PLUGIN_CONFIG_FILE + "\")" +
+                    " -- Using default configuration");
             }
             return properties;
         } catch (IOException e) {
@@ -342,10 +346,19 @@ public class Plugin implements BundleActivator {
 
     // ---
 
-    private void initPluginTopic() {
+    /**
+     * Creates a Plugin topic in the DB, if not already exists.
+     * <p>
+     * A Plugin topic represents an installed plugin and is used to track its version.
+     *
+     * @return  <code>true</code> if a Plugin topic has been created (means: this is a clean install),
+     *          <code>false</code> otherwise.
+     */
+    private boolean initPluginTopic() {
         pluginTopic = findPluginTopic();
         if (pluginTopic != null) {
             logger.info("No need to create topic for plugin \"" + pluginName + "\" (already exists)");
+            return false;
         } else {
             logger.info("Creating topic for plugin \"" + pluginName + "\"");
             Map properties = new HashMap();
@@ -353,6 +366,7 @@ public class Plugin implements BundleActivator {
             properties.put("de/deepamehta/core/property/PluginMigrationNr", 0);
             // FIXME: clientContext=null
             pluginTopic = dms.createTopic("de/deepamehta/core/topictype/Plugin", properties, null);
+            return true;
         }
     }
 
@@ -365,8 +379,8 @@ public class Plugin implements BundleActivator {
     private void initPlugin() {
         try {
             logger.info("----- Initializing plugin \"" + pluginName + "\" -----");
-            initPluginTopic();
-            runPluginMigrations();
+            boolean isCleanInstall = initPluginTopic();
+            runPluginMigrations(isCleanInstall);
             registerPlugin();
         } catch (RuntimeException e) {
             logger.severe("Plugin \"" + pluginName + "\" can't be activated. Reason:");
@@ -377,14 +391,14 @@ public class Plugin implements BundleActivator {
     /**
      * Determines the migrations to be run for this plugin and run them.
      */
-    private void runPluginMigrations() {
+    private void runPluginMigrations(boolean isCleanInstall) {
         int migrationNr = (Integer) pluginTopic.getProperty("de/deepamehta/core/property/PluginMigrationNr");
         int requiredMigrationNr = Integer.parseInt(getConfigProperty("requiredPluginMigrationNr", "0"));
         int migrationsToRun = requiredMigrationNr - migrationNr;
         logger.info("migrationNr=" + migrationNr + ", requiredMigrationNr=" + requiredMigrationNr +
             " => Running " + migrationsToRun + " plugin migrations");
         for (int i = migrationNr + 1; i <= requiredMigrationNr; i++) {
-            dms.runPluginMigration(this, i);
+            dms.runPluginMigration(this, i, isCleanInstall);
         }
     }
 }
