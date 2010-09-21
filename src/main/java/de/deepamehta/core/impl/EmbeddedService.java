@@ -47,7 +47,7 @@ public class EmbeddedService implements CoreService {
     // ------------------------------------------------------------------------------------------------------- Constants
 
     private static final String DATABASE_PATH = "deepamehta-db";
-    private static final String CORE_MIGRATIONS_PACKAGE = "de.deepamehta.core.impl.migrations";
+    private static final String CORE_MIGRATIONS_PACKAGE = "de.deepamehta.core.migrations";
     private static final int REQUIRED_CORE_MIGRATION = 1;
 
     // ---------------------------------------------------------------------------------------------- Instance Variables
@@ -952,11 +952,11 @@ public class EmbeddedService implements CoreService {
         // ---
 
         private String migrationTypesFile(int migrationNr) {
-            return "/types" + migrationNr + ".json";
+            return "/migrations/types" + migrationNr + ".json";
         }
 
         private String migrationConfigFile(int migrationNr) {
-            return "/migration" + migrationNr + ".properties";
+            return "/migrations/migration" + migrationNr + ".properties";
         }
 
         private String coreMigrationClass(int migrationNr) {
