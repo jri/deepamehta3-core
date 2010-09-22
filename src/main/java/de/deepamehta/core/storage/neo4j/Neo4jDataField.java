@@ -47,6 +47,15 @@ class Neo4jDataField extends DataField {
     // -------------------------------------------------------------------------------------------------- Public Methods
 
     @Override
+    public void setProperty(String key, Object value) {
+        logger.info("#################################### Neo4jDataField: set " + key + "=" + value);
+        // update memory
+        super.setProperty(key, value);
+        // update DB
+        node.setProperty(key, value);
+    }
+
+    @Override
     public void setProperties(Map<String, Object> properties) {
         // update memory
         super.setProperties(properties);
@@ -58,6 +67,7 @@ class Neo4jDataField extends DataField {
             if (oldValue != null && !oldValue.equals(newValue)) {
                 log.append("\n  " + key + ": \"" + oldValue + "\" => \"" + newValue + "\"");
             }
+            //
             node.setProperty(key, newValue);
         }
         if (log.length() > 0) {
