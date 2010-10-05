@@ -78,26 +78,31 @@ public class Plugin implements BundleActivator {
     }
 
     /**
-     * Uses the plugin bundle's class loader to load the migration class for the given migration number.
+     * Uses the plugin bundle's class loader to load a class by name.
      *
-     * @return  the migration class, or <code>null</code> if there is no such class.
-     *          Note: a migration can be purely declarative (just consisting of a typesNN.json file).
+     * @return  the class, or <code>null</code> if the class is not found.
      */
-    public Class getMigrationClass(int migrationNr) throws ClassNotFoundException,
-                                                           InstantiationException,
-                                                           IllegalAccessException {
-        // Generic plugins (plugin bundles not containing a Plugin subclass) which provide migration classes
-        // must set the "pluginPackage" config property. Otherwise the migration classes can't be located.
-        if (pluginPackage.equals("de.deepamehta.core.service")) {
-            return null;
-        }
-        //
-        String migrationClassName = pluginPackage + ".migrations.Migration" + migrationNr;
+    public Class loadClass(String className) {
         try {
-            return pluginBundle.loadClass(migrationClassName);
+            return pluginBundle.loadClass(className);
         } catch (ClassNotFoundException e) {
             return null;
         }
+    }
+
+    /**
+     * Returns the migration class name for the given migration number.
+     *
+     * @return  the fully qualified migration class name, or <code>null</code> if the migration package is unknown.
+     *          This is the case if the plugin bundle contains no Plugin subclass and the "pluginPackage" config
+     *          property is not set.
+     */
+    public String getMigrationClassName(int migrationNr) {
+        if (pluginPackage.equals("de.deepamehta.core.service")) {
+            return null;    // migration package is unknown
+        }
+        //
+        return pluginPackage + ".migrations.Migration" + migrationNr;
     }
 
     /**
@@ -332,7 +337,7 @@ public class Plugin implements BundleActivator {
                 properties.load(in);
             } else {
                 logger.info("No plugin config file found (tried \"" + PLUGIN_CONFIG_FILE + "\")" +
-                    " -- Using default configuration");
+                    " -- using default configuration");
             }
             return properties;
         } catch (IOException e) {
@@ -351,16 +356,16 @@ public class Plugin implements BundleActivator {
      * <p>
      * A Plugin topic represents an installed plugin and is used to track its version.
      *
-     * @return  <code>true</code> if a Plugin topic has been created (means: this is a clean install),
+     * @return  <code>true</code> if a Plugin topic has been created (means: this is a plugin clean install),
      *          <code>false</code> otherwise.
      */
     private boolean initPluginTopic() {
         pluginTopic = findPluginTopic();
         if (pluginTopic != null) {
-            logger.info("No need to create topic for plugin \"" + pluginName + "\" (already exists)");
+            logger.info("Do NOT create topic for plugin \"" + pluginName + "\" -- already exists");
             return false;
         } else {
-            logger.info("Creating topic for plugin \"" + pluginName + "\"");
+            logger.info("Creating topic for plugin \"" + pluginName + "\" -- this is a plugin clean install");
             Map properties = new HashMap();
             properties.put("de/deepamehta/core/property/PluginID", pluginId);
             properties.put("de/deepamehta/core/property/PluginMigrationNr", 0);
@@ -396,7 +401,7 @@ public class Plugin implements BundleActivator {
         int requiredMigrationNr = Integer.parseInt(getConfigProperty("requiredPluginMigrationNr", "0"));
         int migrationsToRun = requiredMigrationNr - migrationNr;
         logger.info("migrationNr=" + migrationNr + ", requiredMigrationNr=" + requiredMigrationNr +
-            " => Running " + migrationsToRun + " plugin migrations");
+            " -- running " + migrationsToRun + " plugin migrations");
         for (int i = migrationNr + 1; i <= requiredMigrationNr; i++) {
             dms.runPluginMigration(this, i, isCleanInstall);
         }

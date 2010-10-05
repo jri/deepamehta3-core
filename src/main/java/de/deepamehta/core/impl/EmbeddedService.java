@@ -11,6 +11,7 @@ import de.deepamehta.core.service.Plugin;
 import de.deepamehta.core.storage.Storage;
 import de.deepamehta.core.storage.Transaction;
 import de.deepamehta.core.storage.neo4j.Neo4jStorage;
+import de.deepamehta.core.util.JSONHelper;
 
 import org.codehaus.jettison.json.JSONArray;
 import org.codehaus.jettison.json.JSONException;
@@ -783,7 +784,7 @@ public class EmbeddedService implements CoreService {
         int requiredMigrationNr = REQUIRED_CORE_MIGRATION;
         int migrationsToRun = requiredMigrationNr - migrationNr;
         logger.info("migrationNr=" + migrationNr + ", requiredMigrationNr=" + requiredMigrationNr +
-            " => Running " + migrationsToRun + " core migrations");
+            " -- running " + migrationsToRun + " core migrations");
         for (int i = migrationNr + 1; i <= requiredMigrationNr; i++) {
             runCoreMigration(i, isCleanInstall);
         }
@@ -814,29 +815,29 @@ public class EmbeddedService implements CoreService {
             }
             // error checks
             if (!mi.isDeclarative && !mi.isImperative) {
-                throw new RuntimeException("Neither a types file \"" + mi.typesFile +
-                    "\" nor a migration class " + mi.migrationClass.getName() + " is found");
+                throw new RuntimeException("Neither a types file (" + mi.typesFile +
+                    ") nor a migration class (" + mi.migrationClassName + ") is found");
             }
             if (mi.isDeclarative && mi.isImperative) {
                 throw new RuntimeException("Ambiguity: a types file (" + mi.typesFile +
-                    ") AND a migration class (" + mi.migrationClass.getName() + ") are found");
+                    ") AND a migration class (" + mi.migrationClassName + ") are found");
             }
             // run migration
+            String runInfo = " (runMode=" + mi.runMode + ", isCleanInstall=" + isCleanInstall + ")";
             if (mi.runMode.equals(MigrationRunMode.CLEAN_INSTALL.name()) == isCleanInstall ||
                 mi.runMode.equals(MigrationRunMode.ALWAYS.name())) {
-                logger.info("Running " + mi.migrationInfo);
+                logger.info("Running " + mi.migrationInfo + runInfo);
                 if (mi.isDeclarative) {
-                    readTypesFromFile(mi.typesIn, mi.typesFile);
+                    JSONHelper.readTypesFromFile(mi.typesIn, mi.typesFile, this);
                 } else {
                     Migration migration = (Migration) mi.migrationClass.newInstance();
-                    logger.info("Running " + mi.migrationType + " migration class " + mi.migrationClass.getName());
+                    logger.info("Running " + mi.migrationType + " migration class " + mi.migrationClassName);
                     migration.setService(this);
                     migration.run();
                 }
                 logger.info(mi.migrationType + " migration complete");
             } else {
-                logger.info("Do NOT run " + mi.migrationInfo + " (runMode=" + mi.runMode +
-                    ", isCleanInstall=" + isCleanInstall + ")");
+                logger.info("Do NOT run " + mi.migrationInfo + runInfo);
             }
             logger.info("Updating migration number (" + migrationNr + ")");
         } catch (Throwable e) {
@@ -847,52 +848,25 @@ public class EmbeddedService implements CoreService {
     // ---
 
     /**
-     * <p>Creates types from a JSON formatted input stream.<p>
-     */
-    private void readTypesFromFile(InputStream is, String typesFileName) {
-        try {
-            logger.info("Reading types from file \"" + typesFileName + "\"");
-            BufferedReader in = new BufferedReader(new InputStreamReader(is));
-            String line;
-            StringBuilder json = new StringBuilder();
-            while ((line = in.readLine()) != null) {
-                json.append(line);
-            }
-            createTypes(json.toString());
-        } catch (Throwable e) {
-            throw new RuntimeException("Error while reading types file \"" + typesFileName + "\"", e);
-        }
-    }
-
-    private void createTypes(String json) throws JSONException {
-        JSONArray types = new JSONArray(json);
-        for (int i = 0; i < types.length(); i++) {
-            TopicType topicType = new TopicType(types.getJSONObject(i));
-            createTopicType(topicType.getProperties(), topicType.getDataFields());
-        }
-    }
-
-    // ---
-
-    /**
      * Collects the info required to run a migration.
      */
     private class MigrationInfo {
 
-        String migrationType;   // "core", "plugin"
-        String migrationInfo;   // for logging
-        String runMode;         // "CLEAN_INSTALL", "UPDATE", "ALWAYS"
+        String migrationType;       // "core", "plugin"
+        String migrationInfo;       // for logging
+        String runMode;             // "CLEAN_INSTALL", "UPDATE", "ALWAYS"
         //
         boolean isDeclarative;
         boolean isImperative;
         //
-        String typesFile;       // for declarative migration
-        InputStream typesIn;    // for declarative migration
+        String typesFile;           // for declarative migration
+        InputStream typesIn;        // for declarative migration
         //
-        Class migrationClass;   // for imperative migration
+        String migrationClassName;  // for imperative migration
+        Class migrationClass;       // for imperative migration
         //
-        boolean success;        // error occurred?
-        Throwable exception;    // the error
+        boolean success;            // error occurred?
+        Throwable exception;        // the error
 
         MigrationInfo(int migrationNr, Plugin plugin) {
             try {
@@ -906,13 +880,17 @@ public class EmbeddedService implements CoreService {
                     logger.info("Preparing " + migrationInfo + " ...");
                     configIn = getClass().getResourceAsStream(configFile);
                     typesIn  = getClass().getResourceAsStream(typesFile);
-                    migrationClass = getClassOrNull(coreMigrationClass(migrationNr));
+                    migrationClassName = coreMigrationClassName(migrationNr);
+                    migrationClass = loadClass(migrationClassName);
                 } else {
                     migrationInfo = "migration " + migrationNr + " of plugin \"" + plugin.getName() + "\"";
                     logger.info("Preparing " + migrationInfo + " ...");
                     configIn = plugin.getResourceAsStream(configFile);
                     typesIn  = plugin.getResourceAsStream(typesFile);
-                    migrationClass = plugin.getMigrationClass(migrationNr);
+                    migrationClassName = plugin.getMigrationClassName(migrationNr);
+                    if (migrationClassName != null) {
+                        migrationClass = plugin.loadClass(migrationClassName);
+                    }
                 }
                 //
                 isDeclarative = typesIn != null;
@@ -936,7 +914,7 @@ public class EmbeddedService implements CoreService {
                     migrationConfig.load(in);
                 } else {
                     logger.info("No migration config file found (tried \"" + configFile + "\")" +
-                        " -- Using default configuration");
+                        " -- using default configuration");
                 }
                 //
                 runMode = migrationConfig.getProperty("migrationRunMode", MigrationRunMode.ALWAYS.name());
@@ -959,7 +937,7 @@ public class EmbeddedService implements CoreService {
             return "/migrations/migration" + migrationNr + ".properties";
         }
 
-        private String coreMigrationClass(int migrationNr) {
+        private String coreMigrationClassName(int migrationNr) {
             return CORE_MIGRATIONS_PACKAGE + ".Migration" + migrationNr;
         }
 
@@ -967,8 +945,10 @@ public class EmbeddedService implements CoreService {
 
         /**
          * Uses the core bundle's class loader to load a class by name.
+         *
+         * @return  the class, or <code>null</code> if the class is not found.
          */
-        private Class getClassOrNull(String className) {
+        private Class loadClass(String className) {
             try {
                 return Class.forName(className);
             } catch (ClassNotFoundException e) {
