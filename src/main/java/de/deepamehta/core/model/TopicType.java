@@ -14,7 +14,7 @@ import java.util.logging.Logger;
 
 /**
  * A topic type. Part of the meta-model (like a class).
- * <br><br>
+ * <p>
  * A topic type is an ordered collection of {@link DataField}s.
  * A topic type itself is a {@link Topic}.
  *
@@ -32,7 +32,7 @@ public class TopicType extends Topic {
 
     public TopicType(Map properties, List dataFields) {
         // id and label remain uninitialized
-        super(-1, "de/deepamehta/core/topictype/TopicType", null, properties);
+        super(-1, "de/deepamehta/core/topictype/TopicType", null, properties);  // label=null
         this.dataFields = dataFields;
     }
 

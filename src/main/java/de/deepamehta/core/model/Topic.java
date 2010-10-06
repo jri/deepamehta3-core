@@ -51,7 +51,7 @@ public class Topic {
     }
 
     public void setProperties(Map<String, Object> properties) {
-        this.properties = properties;
+        this.properties.putAll(properties);
     }
 
     public Object getProperty(String key) {

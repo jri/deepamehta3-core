@@ -107,7 +107,7 @@ public class DataField {
             logger.warning("Overriding properties of data field " + this + ":" + log);
         }
         //
-        this.properties = properties;
+        this.properties = properties;   // FIXME: use putAll() instead?
         setDefaults();
     }
 
