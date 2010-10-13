@@ -335,7 +335,7 @@ public class EmbeddedService implements CoreService {
         Transaction tx = storage.beginTx();
         try {
             Topic topic = getTopic(id);
-            Map oldProperties = topic.getProperties();
+            Map oldProperties = new HashMap(topic.getProperties()); // copy old properties for comparison with new ones
             //
             triggerHook(Hook.PRE_UPDATE_TOPIC, topic, properties);
             //

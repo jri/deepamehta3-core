@@ -46,14 +46,6 @@ public class Topic {
 
     // -------------------------------------------------------------------------------------------------- Public Methods
 
-    public Map<String, Object> getProperties() {
-        return properties;
-    }
-
-    public void setProperties(Map<String, Object> properties) {
-        this.properties.putAll(properties);
-    }
-
     public Object getProperty(String key) {
         Object value = properties.get(key);
         if (value == null) {
@@ -69,8 +61,22 @@ public class Topic {
         return value != null ? value : defaultValue;
     }
 
+    public Map<String, Object> getProperties() {
+        return properties;
+    }
+
+    // ---
+
     public void setProperty(String key, Object value) {
         properties.put(key, value);
+    }
+
+    /**
+     * Sets various properties at once.
+     * Same as consecutive {@link setProperty} calls.
+     */
+    public void setProperties(Map<String, Object> properties) {
+        this.properties.putAll(properties);
     }
 
     // ---
