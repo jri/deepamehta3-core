@@ -76,8 +76,10 @@ public class JSONHelper {
      */
     public static void readTypesFromFile(InputStream is, String typesFileName, CoreService cs) {
         try {
-            logger.info("Reading types from file \"" + typesFileName + "\"");
-            BufferedReader in = new BufferedReader(new InputStreamReader(is));
+            InputStreamReader reader = new InputStreamReader(is);
+            logger.info("Reading types from file \"" + typesFileName +
+                "\" (assumed encoding is \"" + reader.getEncoding() + "\")");
+            BufferedReader in = new BufferedReader(reader);
             String line;
             StringBuilder json = new StringBuilder();
             while ((line = in.readLine()) != null) {

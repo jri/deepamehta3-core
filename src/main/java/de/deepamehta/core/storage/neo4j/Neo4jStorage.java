@@ -458,55 +458,58 @@ public class Neo4jStorage implements Storage {
         }
         for (String key : properties.keySet()) {
             Object value = properties.get(key);
-            // update DB
+            Object oldValue = container.getProperty(key, null);     // null for newly created topics
+            // 1) update DB
             container.setProperty(key, value);
-            // update index
+            // 2) update index
             if (container instanceof Node) {
                 // Note: we only index node properties.
                 // Neo4j can't index relationship properties.
-                indexProperty((Node) container, key, value, typeUri);
+                indexProperty((Node) container, key, value, oldValue, typeUri);
             }
         }
     }
 
-    private void indexProperty(Node node, String key, Object value, String typeUri) {
+    private void indexProperty(Node node, String key, Object value, Object oldValue, String typeUri) {
         // Note: we only index instance nodes. Meta nodes (types) are responsible for indexing themself.
         if (typeUri.equals("de/deepamehta/core/topictype/TopicType")) {
             return;
         }
-        // 1) remove old value
-        removeFromIndex(node, key);
-        // 2) index new value
+        // remove old value and index new value
         DataField dataField = getTopicType(typeUri).getDataField(key);
         String indexingMode = dataField.getIndexingMode();
         if (indexingMode.equals("OFF")) {
             return;
         } else if (indexingMode.equals("KEY")) {
-            index.index(node, key, value);
+            index.removeIndex(node, key);                               // remove old
+            index.index(node, key, value);                              // index new
         } else if (indexingMode.equals("FULLTEXT")) {
-            fulltextIndex.index(node, "default", value);
+            // Note: all the topic's FULLTEXT properties are indexed under the same key ("default").
+            // So, when removing from index we must explicitley give the old value.
+            if (oldValue != null) {
+                fulltextIndex.removeIndex(node, "default", oldValue);   // remove old
+            }
+            fulltextIndex.index(node, "default", value);                // index new
         } else if (indexingMode.equals("FULLTEXT_KEY")) {
-            fulltextIndex.index(node, key, value);
+            fulltextIndex.removeIndex(node, key);                       // remove old
+            fulltextIndex.index(node, key, value);                      // index new
         } else {
             throw new RuntimeException("Data field \"" + key + "\" of type definition \"" +
                 typeUri + "\" has unexpectd indexing mode: \"" + indexingMode + "\"");
         }
     }
 
-    // ---
-
+    /**
+     * Completely removes a topic from the index. Called when a topic is deleted.
+     */
     private void removeFromIndex(Node node) {
-        for (String key : node.getPropertyKeys()) {
-            removeFromIndex(node, key);
-        }
-    }
-
-    private void removeFromIndex(Node node, String key) {
         // Note: we don't know the index mode so we just remove for every mode.
         // (In conjunction with node deletion it would not be easy to tell the index mode.)
-        index.removeIndex(node, key);
+        for (String key : node.getPropertyKeys()) {
+            index.removeIndex(node, key);
+            fulltextIndex.removeIndex(node, key);
+        }
         fulltextIndex.removeIndex(node, "default");
-        fulltextIndex.removeIndex(node, key);
     }
 
     // --- Types ---
