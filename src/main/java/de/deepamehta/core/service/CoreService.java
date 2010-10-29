@@ -5,9 +5,8 @@ import de.deepamehta.core.model.Topic;
 import de.deepamehta.core.model.TopicType;
 import de.deepamehta.core.model.RelatedTopic;
 import de.deepamehta.core.model.Relation;
+import de.deepamehta.core.storage.Transaction;
 
-import org.codehaus.jettison.json.JSONArray;
-import org.codehaus.jettison.json.JSONException;
 import org.codehaus.jettison.json.JSONObject;
 
 import java.util.Collection;
@@ -146,7 +145,7 @@ public interface CoreService {
 
     // --- Plugins ---
 
-    public void registerPlugin(String pluginId, Plugin plugin);
+    public void registerPlugin(Plugin plugin, boolean isCleanInstall);
 
     public void unregisterPlugin(String pluginId);
 
@@ -157,6 +156,8 @@ public interface CoreService {
     public void runPluginMigration(Plugin plugin, int migrationNr, boolean isCleanInstall);
 
     // --- Misc ---
+
+    public Transaction beginTx();
 
     public void shutdown();
 }

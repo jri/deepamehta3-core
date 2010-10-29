@@ -72,6 +72,8 @@ public class EmbeddedService implements CoreService {
         PROVIDE_TOPIC_PROPERTIES("providePropertiesHook", Topic.class),
         PROVIDE_RELATION_PROPERTIES("providePropertiesHook", Relation.class),
 
+        MODIFY_TOPIC_TYPE("modifyTopicTypeHook", TopicType.class),
+
         EXECUTE_COMMAND("executeCommandHook", String.class, Map.class, Map.class);
 
         private final String name;
@@ -539,7 +541,7 @@ public class EmbeddedService implements CoreService {
         try {
             TopicType tt = new TopicType(properties, dataFields);
             //
-            triggerHook(Hook.PRE_CREATE_TOPIC, tt, null);  // FIXME: clientContext=null
+            triggerHook(Hook.MODIFY_TOPIC_TYPE, tt);
             //
             topicType = storage.createTopicType(properties, dataFields);
             //
@@ -667,8 +669,13 @@ public class EmbeddedService implements CoreService {
     // === Plugins ===
 
     @Override
-    public void registerPlugin(String pluginId, Plugin plugin) {
-        plugins.put(pluginId, plugin);
+    public void registerPlugin(Plugin plugin, boolean isCleanInstall) {
+        //
+        plugins.put(plugin.getId(), plugin);
+        //
+        if (isCleanInstall) {
+            introduceTypesToPlugin(plugin);
+        }
     }
 
     @Override
@@ -713,6 +720,11 @@ public class EmbeddedService implements CoreService {
     // === Misc ===
 
     @Override
+    public Transaction beginTx() {
+        return storage.beginTx();
+    }
+
+    @Override
     public void shutdown() {
         closeDB();
     }
@@ -738,18 +750,38 @@ public class EmbeddedService implements CoreService {
 
     // === Plugins ===
 
-    private Set triggerHook(Hook hook, Object... params) throws NoSuchMethodException,
-                                                                IllegalAccessException,
-                                                                InvocationTargetException {
+    private Set triggerHook(Hook hook, Object... params) throws Exception {
         Set resultSet = new HashSet();
         for (Plugin plugin : plugins.values()) {
-            Method hookMethod = plugin.getClass().getMethod(hook.name, hook.paramClasses);
-            Object result = hookMethod.invoke(plugin, params);
+            Object result = triggerHook(plugin, hook, params);
             if (result != null) {
                 resultSet.add(result);
             }
         }
         return resultSet;
+    }
+
+    /**
+     * @throws  NoSuchMethodException
+     * @throws  IllegalAccessException
+     * @throws  InvocationTargetException
+     */
+    private Object triggerHook(Plugin plugin, Hook hook, Object... params) throws Exception {
+        Method hookMethod = plugin.getClass().getMethod(hook.name, hook.paramClasses);
+        return hookMethod.invoke(plugin, params);
+    }
+
+    // ---
+
+    private void introduceTypesToPlugin(Plugin plugin) {
+        for (String typeUri : getTopicTypeUris()) {
+            try {
+                triggerHook(plugin, Hook.MODIFY_TOPIC_TYPE, getTopicType(typeUri));
+            } catch (Exception e) {
+                throw new RuntimeException("Error while invoking MODIFY_TOPIC_TYPE hook for topic type \"" +
+                    typeUri + "\"", e);
+            }
+        }
     }
 
     private void setPluginMigrationNr(Plugin plugin, int migrationNr) {

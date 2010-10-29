@@ -2,21 +2,20 @@ package de.deepamehta.core.service;
 
 import de.deepamehta.core.model.Relation;
 import de.deepamehta.core.model.Topic;
+import de.deepamehta.core.model.TopicType;
+import de.deepamehta.core.storage.Transaction;
 
 import com.sun.jersey.spi.container.servlet.ServletContainer;
 
 import org.osgi.framework.Bundle;
 import org.osgi.framework.BundleActivator;
 import org.osgi.framework.BundleContext;
-import org.osgi.framework.FrameworkUtil;
 import org.osgi.framework.ServiceReference;
 import org.osgi.service.http.HttpContext;
 import org.osgi.service.http.HttpService;
 import org.osgi.service.http.NamespaceException;
 import org.osgi.util.tracker.ServiceTracker;
 
-import org.codehaus.jettison.json.JSONArray;
-import org.codehaus.jettison.json.JSONException;
 import org.codehaus.jettison.json.JSONObject;
 
 import java.util.ArrayList;
@@ -45,8 +44,8 @@ public class Plugin implements BundleActivator {
 
     // ---------------------------------------------------------------------------------------------- Instance Variables
 
-    private String pluginId;                    // Bundle's symbolic name.
-    private String pluginName;
+    private String pluginId;                    // This bundle's symbolic name.
+    private String pluginName;                  // This bundle's name = POM project name.
     private String pluginClass;
     private String pluginPackage;
     private Bundle pluginBundle;
@@ -64,6 +63,10 @@ public class Plugin implements BundleActivator {
     private Logger logger = Logger.getLogger(getClass().getName());
 
     // -------------------------------------------------------------------------------------------------- Public Methods
+
+    public String getId() {
+        return pluginId;
+    }
 
     public String getName() {
         return pluginName;
@@ -208,6 +211,11 @@ public class Plugin implements BundleActivator {
 
     // ---
 
+    public void modifyTopicTypeHook(TopicType topicType) {
+    }
+
+    // ---
+
     public JSONObject executeCommandHook(String command, Map params, Map<String, String> clientContext) {
         return null;
     }
@@ -264,9 +272,9 @@ public class Plugin implements BundleActivator {
 
     // ---
 
-    private void registerPlugin() {
+    private void registerPlugin(boolean isCleanInstall) {
         logger.info("Registering plugin \"" + pluginName + "\" at DeepaMehta core service");
-        dms.registerPlugin(pluginId, this);
+        dms.registerPlugin(this, isCleanInstall);
         isActivated = true;
     }
 
@@ -351,6 +359,26 @@ public class Plugin implements BundleActivator {
 
     // ---
 
+    private void initPlugin() {
+        RuntimeException ex = null;
+        Transaction tx = dms.beginTx();
+        try {
+            logger.info("----- Initializing plugin \"" + pluginName + "\" -----");
+            boolean isCleanInstall = initPluginTopic();
+            runPluginMigrations(isCleanInstall);
+            registerPlugin(isCleanInstall);
+            tx.success();
+        } catch (Throwable e) {
+            logger.warning("ROLLBACK!");
+            ex = new RuntimeException("Plugin \"" + pluginName + "\" can't be activated. Reason:", e);
+        } finally {
+            tx.finish();
+            if (ex != null) {
+                throw ex;
+            }
+        }
+    }
+
     /**
      * Creates a Plugin topic in the DB, if not already exists.
      * <p>
@@ -377,20 +405,6 @@ public class Plugin implements BundleActivator {
 
     private Topic findPluginTopic() {
         return dms.getTopic("de/deepamehta/core/property/PluginID", pluginId);
-    }
-
-    // ---
-
-    private void initPlugin() {
-        try {
-            logger.info("----- Initializing plugin \"" + pluginName + "\" -----");
-            boolean isCleanInstall = initPluginTopic();
-            runPluginMigrations(isCleanInstall);
-            registerPlugin();
-        } catch (RuntimeException e) {
-            logger.severe("Plugin \"" + pluginName + "\" can't be activated. Reason:");
-            throw e;
-        }
     }
 
     /**
