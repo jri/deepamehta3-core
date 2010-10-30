@@ -181,6 +181,11 @@ public class Plugin implements BundleActivator {
 
 
 
+    public void evokePluginHook() {
+    }
+
+    // ---
+
     public void preCreateHook(Topic topic, Map<String, String> clientContext) {
     }
 

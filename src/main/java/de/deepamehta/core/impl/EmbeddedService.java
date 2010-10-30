@@ -61,6 +61,8 @@ public class EmbeddedService implements CoreService {
 
     private enum Hook {
 
+        EVOKE_PLUGIN("evokePluginHook"),
+
          PRE_CREATE_TOPIC("preCreateHook",  Topic.class, Map.class),
         POST_CREATE_TOPIC("postCreateHook", Topic.class, Map.class),
          PRE_UPDATE_TOPIC("preUpdateHook",  Topic.class, Map.class),
@@ -674,6 +676,7 @@ public class EmbeddedService implements CoreService {
         plugins.put(plugin.getId(), plugin);
         //
         if (isCleanInstall) {
+            evokePlugin(plugin);
             introduceTypesToPlugin(plugin);
         }
     }
@@ -772,6 +775,14 @@ public class EmbeddedService implements CoreService {
     }
 
     // ---
+
+    private void evokePlugin(Plugin plugin) {
+        try {
+            triggerHook(plugin, Hook.EVOKE_PLUGIN);
+        } catch (Exception e) {
+            throw new RuntimeException("Error while invoking EVOKE_PLUGIN hook", e);
+        }
+    }
 
     private void introduceTypesToPlugin(Plugin plugin) {
         for (String typeUri : getTopicTypeUris()) {
