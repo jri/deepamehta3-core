@@ -68,11 +68,13 @@ public class EmbeddedService implements CoreService {
          PRE_UPDATE_TOPIC("preUpdateHook",  Topic.class, Map.class),
         POST_UPDATE_TOPIC("postUpdateHook", Topic.class, Map.class),
 
-         PRE_DELETE_RELATION("preDeleteRelationHook", Long.TYPE),
+         PRE_DELETE_RELATION("preDeleteRelationHook",  Long.TYPE),
         POST_DELETE_RELATION("postDeleteRelationHook", Long.TYPE),
 
         PROVIDE_TOPIC_PROPERTIES("providePropertiesHook", Topic.class),
         PROVIDE_RELATION_PROPERTIES("providePropertiesHook", Relation.class),
+
+        PROVIDE_TOPIC_AUXILIARY("provideAuxiliaryHook", Topic.class, Map.class),
 
         MODIFY_TOPIC_TYPE("modifyTopicTypeHook", TopicType.class),
 
@@ -133,12 +135,13 @@ public class EmbeddedService implements CoreService {
     // === Topics ===
 
     @Override
-    public Topic getTopic(long id) {
+    public Topic getTopic(long id, Map clientContext) {
         Topic topic = null;
         RuntimeException ex = null;
         Transaction tx = storage.beginTx();
         try {
             topic = storage.getTopic(id);
+            triggerHook(Hook.PROVIDE_TOPIC_AUXILIARY, topic, clientContext);
             tx.success();   
         } catch (Throwable e) {
             logger.warning("ROLLBACK!");
@@ -316,6 +319,7 @@ public class EmbeddedService implements CoreService {
             topic = storage.createTopic(t.typeUri, t.getProperties());
             //
             triggerHook(Hook.POST_CREATE_TOPIC, topic, clientContext);
+            triggerHook(Hook.PROVIDE_TOPIC_AUXILIARY, topic, clientContext);
             //
             tx.success();
         } catch (Throwable e) {
@@ -336,7 +340,7 @@ public class EmbeddedService implements CoreService {
         RuntimeException ex = null;
         Transaction tx = storage.beginTx();
         try {
-            Topic topic = getTopic(id);
+            Topic topic = getTopic(id, null);   // clientContext=null
             Map oldProperties = new HashMap(topic.getProperties()); // copy old properties for comparison with new ones
             //
             triggerHook(Hook.PRE_UPDATE_TOPIC, topic, properties);

@@ -30,6 +30,7 @@ public class Topic {
     public String label;
 
     protected Map<String, Object> properties;
+    private   Map<String, Object> auxiliary;
 
     // ---------------------------------------------------------------------------------------------------- Constructors
 
@@ -38,6 +39,7 @@ public class Topic {
         this.typeUri = typeUri;
         this.label = label;
         this.properties = properties != null ? properties : new HashMap();
+        this.auxiliary = new HashMap();
     }
 
     public Topic(Topic topic) {
@@ -81,12 +83,24 @@ public class Topic {
 
     // ---
 
+    public void setAuxiliary(String key, Object value) {
+        auxiliary.put(key, value);
+    }
+
+    // ---
+
     public JSONObject toJSON() throws JSONException {
         JSONObject o = new JSONObject();
         o.put("id", id);
         o.put("type_uri", typeUri);
         o.put("label", label);
         o.put("properties", properties);
+        // auxiliary
+        for (String key : auxiliary.keySet()) {
+            Object aux = auxiliary.get(key);
+            o.put(key, aux instanceof Map ? new JSONObject((Map) aux) : aux);
+        }
+        //
         return o;
     }
 

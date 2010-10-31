@@ -34,7 +34,7 @@ public interface CoreService {
 
     // --- Topics ---
 
-    public Topic getTopic(long id);
+    public Topic getTopic(long id, Map clientContext);
 
     /**
      * Looks up a single topic by exact property value.
@@ -72,6 +72,9 @@ public interface CoreService {
      * IMPORTANT: the topics and relations returned by this method provide no properties.
      * To initialize the properties needed by your plugin define its providePropertiesHook().
      *
+     * @param   includeTopicTypes   The include topic type filter (optional).
+     *                              A list of topic type URIs (strings), e.g. "de/deepamehta/core/topictype/Note".
+     *                              Null or an empty list switches the filter off.
      * @param   includeRelTypes     The include relation type filter (optional).
      *                              A list of strings of the form "<relTypeName>[;<direction>]",
      *                              e.g. "TOPICMAP_TOPIC;INCOMING".
