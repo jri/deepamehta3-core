@@ -74,7 +74,8 @@ public class EmbeddedService implements CoreService {
         PROVIDE_TOPIC_PROPERTIES("providePropertiesHook", Topic.class),
         PROVIDE_RELATION_PROPERTIES("providePropertiesHook", Relation.class),
 
-        PROVIDE_TOPIC_AUXILIARY("provideAuxiliaryHook", Topic.class, Map.class),
+        ENRICH_TOPIC("enrichTopicHook", Topic.class, Map.class),
+        ENRICH_TOPIC_TYPE("enrichTopicTypeHook", TopicType.class, Map.class),
 
         MODIFY_TOPIC_TYPE("modifyTopicTypeHook", TopicType.class),
 
@@ -141,7 +142,7 @@ public class EmbeddedService implements CoreService {
         Transaction tx = storage.beginTx();
         try {
             topic = storage.getTopic(id);
-            triggerHook(Hook.PROVIDE_TOPIC_AUXILIARY, topic, clientContext);
+            triggerHook(Hook.ENRICH_TOPIC, topic, clientContext);
             tx.success();   
         } catch (Throwable e) {
             logger.warning("ROLLBACK!");
@@ -319,7 +320,7 @@ public class EmbeddedService implements CoreService {
             topic = storage.createTopic(t.typeUri, t.getProperties());
             //
             triggerHook(Hook.POST_CREATE_TOPIC, topic, clientContext);
-            triggerHook(Hook.PROVIDE_TOPIC_AUXILIARY, topic, clientContext);
+            triggerHook(Hook.ENRICH_TOPIC, topic, clientContext);
             //
             tx.success();
         } catch (Throwable e) {
@@ -519,12 +520,13 @@ public class EmbeddedService implements CoreService {
     }
 
     @Override
-    public TopicType getTopicType(String typeUri) {
+    public TopicType getTopicType(String typeUri, Map clientContext) {
         TopicType topicType = null;
         RuntimeException ex = null;
         Transaction tx = storage.beginTx();
         try {
             topicType = storage.getTopicType(typeUri);
+            triggerHook(Hook.ENRICH_TOPIC_TYPE, topicType, clientContext);
             tx.success();
         } catch (Throwable e) {
             logger.warning("ROLLBACK!");
@@ -747,7 +749,7 @@ public class EmbeddedService implements CoreService {
         if (properties == null) {
             properties = new HashMap();
         }
-        for (DataField dataField : getTopicType(typeUri).getDataFields()) {
+        for (DataField dataField : getTopicType(typeUri, null).getDataFields()) {   // clientContext=null
             if (!dataField.getDataType().equals("reference") && properties.get(dataField.getUri()) == null) {
                 properties.put(dataField.getUri(), "");
             }
@@ -791,7 +793,7 @@ public class EmbeddedService implements CoreService {
     private void introduceTypesToPlugin(Plugin plugin) {
         for (String typeUri : getTopicTypeUris()) {
             try {
-                triggerHook(plugin, Hook.MODIFY_TOPIC_TYPE, getTopicType(typeUri));
+                triggerHook(plugin, Hook.MODIFY_TOPIC_TYPE, getTopicType(typeUri, null));   // clientContext=null
             } catch (Exception e) {
                 throw new RuntimeException("Error while invoking MODIFY_TOPIC_TYPE hook for topic type \"" +
                     typeUri + "\"", e);

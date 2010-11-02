@@ -67,22 +67,24 @@ public class TopicType extends Topic {
 
     @Override
     public JSONObject toJSON() throws JSONException {
-        JSONObject json = new JSONObject();
-        json.put("id", id);                // "derived" from Topic
-        json.put("type_uri", typeUri);     // "derived" from Topic
-        json.put("label", getProperty("de/deepamehta/core/property/TypeLabel"));
-        json.put("uri",   getProperty("de/deepamehta/core/property/TypeURI"));
-        json.put("icon_src", getProperty("icon_src", null));                                //  optional
-        json.put("topic_label_field_uri", getProperty("topic_label_field_uri", null));      //  optional
-        json.put("js_renderer_class", getProperty("js_renderer_class"));
+        JSONObject o = new JSONObject();
+        o.put("id", id);                // "derived" from Topic
+        o.put("type_uri", typeUri);     // "derived" from Topic
+        o.put("label", getProperty("de/deepamehta/core/property/TypeLabel"));
+        o.put("uri",   getProperty("de/deepamehta/core/property/TypeURI"));
+        o.put("icon_src", getProperty("icon_src", null));                                //  optional
+        o.put("topic_label_field_uri", getProperty("topic_label_field_uri", null));      //  optional
+        o.put("js_renderer_class", getProperty("js_renderer_class"));
         //
         JSONArray fields = new JSONArray();
         for (DataField dataField : dataFields) {
             fields.put(dataField.toJSON());
         }
-        json.put("fields", fields);
+        o.put("fields", fields);
         //
-        return json;
+        serializeEnrichment(o);
+        //
+        return o;
     }
 
     // ---

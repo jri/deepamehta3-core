@@ -216,7 +216,10 @@ public class Plugin implements BundleActivator {
 
     // ---
 
-    public void provideAuxiliaryHook(Topic topic, Map<String, String> clientContext) {
+    public void enrichTopicHook(Topic topic, Map<String, String> clientContext) {
+    }
+
+    public void enrichTopicTypeHook(TopicType topicType, Map<String, String> clientContext) {
     }
 
     // ---

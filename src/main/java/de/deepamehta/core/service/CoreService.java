@@ -130,7 +130,7 @@ public interface CoreService {
 
     public Set<String> getTopicTypeUris();
 
-    public TopicType getTopicType(String typeUri);
+    public TopicType getTopicType(String typeUri, Map clientContext);
 
     public TopicType createTopicType(Map properties, List dataFields);
 
