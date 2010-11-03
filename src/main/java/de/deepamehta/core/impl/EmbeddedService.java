@@ -547,11 +547,10 @@ public class EmbeddedService implements CoreService {
         RuntimeException ex = null;
         Transaction tx = storage.beginTx();
         try {
-            TopicType tt = new TopicType(properties, dataFields);
-            //
-            triggerHook(Hook.MODIFY_TOPIC_TYPE, tt);
-            //
             topicType = storage.createTopicType(properties, dataFields);
+            //
+            triggerHook(Hook.ENRICH_TOPIC_TYPE, topicType, null);   // FIXME: clientContext=null
+            triggerHook(Hook.MODIFY_TOPIC_TYPE, topicType);
             //
             tx.success();
         } catch (Throwable e) {

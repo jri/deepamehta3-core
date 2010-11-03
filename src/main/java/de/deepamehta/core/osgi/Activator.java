@@ -36,6 +36,7 @@ public class Activator implements BundleActivator {
             context.registerService(CoreService.class.getName(), service, null);
         } catch (RuntimeException e) {
             logger.severe("DeepaMehta core service can't be activated. Reason:");
+            e.printStackTrace();
             throw e;
         }
     }
