@@ -91,7 +91,7 @@ public class JSONHelper {
     /**
      * Creates types from a JSON formatted input stream.
      */
-    public static void readTypesFromFile(InputStream is, String typesFileName, CoreService cs) {
+    public static void readTypesFromFile(InputStream is, String typesFileName, CoreService dms) {
         try {
             InputStreamReader reader = new InputStreamReader(is);
             logger.info("Reading types from file \"" + typesFileName +
@@ -102,17 +102,17 @@ public class JSONHelper {
             while ((line = in.readLine()) != null) {
                 json.append(line);
             }
-            createTypes(json.toString(), cs);
+            createTypes(json.toString(), dms);
         } catch (Throwable e) {
             throw new RuntimeException("Error while reading types file \"" + typesFileName + "\"", e);
         }
     }
 
-    public static void createTypes(String json, CoreService cs) throws JSONException {
+    public static void createTypes(String json, CoreService dms) throws JSONException {
         JSONArray types = new JSONArray(json);
         for (int i = 0; i < types.length(); i++) {
             TopicType topicType = new TopicType(types.getJSONObject(i));
-            cs.createTopicType(topicType.getProperties(), topicType.getDataFields());
+            dms.createTopicType(topicType.getProperties(), topicType.getDataFields(), null);     // clientContext=null
         }
     }
 

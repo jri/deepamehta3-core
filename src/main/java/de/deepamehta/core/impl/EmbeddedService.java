@@ -564,15 +564,16 @@ public class EmbeddedService implements CoreService {
     }
 
     @Override
-    public TopicType createTopicType(Map properties, List dataFields) {
+    public TopicType createTopicType(Map properties, List dataFields, Map clientContext) {
         TopicType topicType = null;
         RuntimeException ex = null;
         Transaction tx = storage.beginTx();
         try {
             topicType = storage.createTopicType(properties, dataFields);
-            //
-            triggerHook(Hook.ENRICH_TOPIC_TYPE, topicType, null);   // FIXME: clientContext=null
+            // Note: the modification must be applied *before* the enrichment.
+            // Consider the Access Control plugin: the creator must be set *before* the permissions can be determined.
             triggerHook(Hook.MODIFY_TOPIC_TYPE, topicType);
+            triggerHook(Hook.ENRICH_TOPIC_TYPE, topicType, clientContext);
             //
             tx.success();
         } catch (Throwable e) {

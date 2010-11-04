@@ -32,7 +32,7 @@ import java.util.Set;
  */
 public interface CoreService {
 
-    // --- Topics ---
+    // === Topics ===
 
     public Topic getTopic(long id, Map clientContext);
 
@@ -106,7 +106,7 @@ public interface CoreService {
 
     public void deleteTopic(long id);
 
-    // --- Relations ---
+    // === Relations ===
 
     public Relation getRelation(long id);
 
@@ -135,13 +135,13 @@ public interface CoreService {
 
     public void deleteRelation(long id);
 
-    // --- Types ---
+    // === Types ===
 
     public Set<String> getTopicTypeUris();
 
     public TopicType getTopicType(String typeUri, Map clientContext);
 
-    public TopicType createTopicType(Map properties, List dataFields);
+    public TopicType createTopicType(Map properties, List dataFields, Map clientContext);
 
     public void addDataField(String typeUri, DataField dataField);
 
@@ -151,11 +151,11 @@ public interface CoreService {
 
     public void setDataFieldOrder(String typeUri, List fieldUris);
 
-    // --- Commands ---
+    // === Commands ===
 
     public JSONObject executeCommand(String command, Map params, Map clientContext);
 
-    // --- Plugins ---
+    // === Plugins ===
 
     public void registerPlugin(Plugin plugin, boolean isCleanInstall);
 
@@ -167,7 +167,7 @@ public interface CoreService {
 
     public void runPluginMigration(Plugin plugin, int migrationNr, boolean isCleanInstall);
 
-    // --- Misc ---
+    // === Misc ===
 
     public Transaction beginTx();
 
