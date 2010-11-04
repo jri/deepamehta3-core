@@ -11,9 +11,9 @@ import java.util.Map;
 /**
  * A relation between 2 {@link Topic}s.
  * A relation has an ID, a type, and a set of properties.
- * <br><br>
+ * <p>
  * Instances of this class are used to pass data around (<i>data transfer object</i>).
- * <br><br>
+ * <p>
  * Note: instances of this class are not backed by a database.
  * That is, direct changes to a Relation object (e.g. by {@link #setProperty}) are not persistent.
  * To make persistent changes use the methods of the DeepaMehta core service
@@ -29,7 +29,8 @@ public class Relation {
     public String typeId;
     public long srcTopicId;
     public long dstTopicId;
-    public Map<String, Object> properties;
+
+    protected Map<String, Object> properties;
 
     // ---------------------------------------------------------------------------------------------------- Constructors
 
@@ -51,19 +52,37 @@ public class Relation {
         return properties.get(key);
     }
 
+    public Map<String, Object> getProperties() {
+        return properties;
+    }
+
+    // ---
+
     public void setProperty(String key, Object value) {
         properties.put(key, value);
     }
 
     // ---
 
-    public JSONObject toJSON() throws JSONException {
-        JSONObject o = new JSONObject();
-        o.put("id", this.id);
-        o.put("type_id", this.typeId);
-        o.put("src_topic_id", this.srcTopicId);
-        o.put("dst_topic_id", this.dstTopicId);
-        o.put("properties", this.properties);
-        return o;
+    public JSONObject toJSON() {
+        try {
+            JSONObject o = new JSONObject();
+            o.put("id", id);
+            o.put("type_id", typeId);
+            o.put("src_topic_id", srcTopicId);
+            o.put("dst_topic_id", dstTopicId);
+            o.put("properties", properties);
+            return o;
+        } catch (JSONException e) {
+            throw new RuntimeException("Error while serializing " + this, e);
+        }
+    }
+
+    // ---
+
+    @Override
+    public String toString() {
+        return "relation " + id + ", connecting topics " + srcTopicId + " and " + dstTopicId +
+            " (typeId=" + typeId + ")";
     }
 }

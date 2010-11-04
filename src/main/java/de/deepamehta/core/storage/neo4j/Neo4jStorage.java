@@ -222,22 +222,22 @@ public class Neo4jStorage implements Storage {
     }
 
     @Override
+    public Set<Relation> getRelations(long topicId) {
+        Set relations = new HashSet();
+        Node node = graphDb.getNodeById(topicId);
+        for (Relationship rel : node.getRelationships()) {
+            relations.add(buildRelation(rel, false));
+        }
+        return relations;
+    }
+
+    @Override
     public Relation getRelation(long srcTopicId, long dstTopicId, String typeId, boolean isDirected) {
         logger.info("Getting relationship between nodes " + srcTopicId + " and " + dstTopicId);
         Relationship relationship = null;
         Node node = graphDb.getNodeById(srcTopicId);
         for (Relationship rel : node.getRelationships()) {
-            // do nodes match?
-            Node relNode = rel.getOtherNode(node);
-            if (relNode.getId() != dstTopicId) {
-                continue;
-            }
-            // apply type filter
-            if (typeId != null && !rel.getType().name().equals(typeId)) {
-                continue;
-            }
-            // apply direction filter
-            if (isDirected && rel.getStartNode().getId() != srcTopicId) {
+            if (!doRelationshipMatches(rel, node, dstTopicId, typeId, isDirected)) {
                 continue;
             }
             // ambiguity?
@@ -256,12 +256,23 @@ public class Neo4jStorage implements Storage {
     }
 
     @Override
-    public Set<Relation> getRelations(long topicId) {
-        Set relations = new HashSet();
-        Node node = graphDb.getNodeById(topicId);
+    public List<Relation> getRelations(long srcTopicId, long dstTopicId, String typeId, boolean isDirected) {
+        logger.info("Getting relationships between nodes " + srcTopicId + " and " + dstTopicId);
+        List<Relation> relations = new ArrayList();
+        Node node = graphDb.getNodeById(srcTopicId);
         for (Relationship rel : node.getRelationships()) {
+            if (!doRelationshipMatches(rel, node, dstTopicId, typeId, isDirected)) {
+                continue;
+            }
             relations.add(buildRelation(rel, false));
         }
+        //
+        if (!relations.isEmpty()) {
+            logger.info("=> " + relations.size() + " relationships found");
+        } else {
+            logger.info("=> no such relationship");
+        }
+        //
         return relations;
     }
 
@@ -432,6 +443,25 @@ public class Neo4jStorage implements Storage {
         Map properties = includeProperties ? getProperties(rel) : null;
         return new Relation(rel.getId(), rel.getType().name(),
             rel.getStartNode().getId(), rel.getEndNode().getId(), properties);
+    }
+
+    private boolean doRelationshipMatches(Relationship rel, Node node, long dstTopicId, String typeId,
+                                                                                        boolean isDirected) {
+        // do nodes match?
+        Node relNode = rel.getOtherNode(node);
+        if (relNode.getId() != dstTopicId) {
+            return false;
+        }
+        // apply type filter
+        if (typeId != null && !rel.getType().name().equals(typeId)) {
+            return false;
+        }
+        // apply direction filter
+        if (isDirected && rel.getStartNode().getId() != node.getId()) {
+            return false;
+        }
+        //
+        return true;
     }
 
     // --- Properties ---

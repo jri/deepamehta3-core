@@ -66,25 +66,34 @@ public class TopicType extends Topic {
     // -------------------------------------------------------------------------------------------------- Public Methods
 
     @Override
-    public JSONObject toJSON() throws JSONException {
-        JSONObject o = new JSONObject();
-        o.put("id", id);                // "derived" from Topic
-        o.put("type_uri", typeUri);     // "derived" from Topic
-        o.put("label", getProperty("de/deepamehta/core/property/TypeLabel"));
-        o.put("uri",   getProperty("de/deepamehta/core/property/TypeURI"));
-        o.put("icon_src", getProperty("icon_src", null));                                //  optional
-        o.put("topic_label_field_uri", getProperty("topic_label_field_uri", null));      //  optional
-        o.put("js_renderer_class", getProperty("js_renderer_class"));
-        //
-        JSONArray fields = new JSONArray();
-        for (DataField dataField : dataFields) {
-            fields.put(dataField.toJSON());
+    public JSONObject toJSON() {
+        try {
+            JSONObject o = new JSONObject();
+            o.put("id", id);                // "derived" from Topic
+            o.put("type_uri", typeUri);     // "derived" from Topic
+            o.put("label", getProperty("de/deepamehta/core/property/TypeLabel"));
+            o.put("uri",   getProperty("de/deepamehta/core/property/TypeURI"));
+            o.put("icon_src", getProperty("icon_src", null));                                //  optional
+            o.put("topic_label_field_uri", getProperty("topic_label_field_uri", null));      //  optional
+            o.put("js_renderer_class", getProperty("js_renderer_class"));
+            //
+            JSONArray fields = new JSONArray();
+            for (DataField dataField : dataFields) {
+                fields.put(dataField.toJSON());
+            }
+            o.put("fields", fields);
+            //
+            serializeEnrichment(o);
+            //
+            return o;
+        } catch (JSONException e) {
+            throw new RuntimeException("Error while serializing " + this, e);
         }
-        o.put("fields", fields);
-        //
-        serializeEnrichment(o);
-        //
-        return o;
+    }
+
+    @Override
+    public String toString() {
+        return "topic type " + getProperty("de/deepamehta/core/property/TypeURI") + " (ID " + id +  ")";
     }
 
     // ---

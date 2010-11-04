@@ -74,6 +74,8 @@ public interface Storage {
 
     public Relation getRelation(long id);
 
+    public Set<Relation> getRelations(long topicId);
+
     /**
      * Returns the relation between two topics. If no such relation exists null is returned.
      * If more than one relation exists, an exception is thrown.
@@ -84,7 +86,14 @@ public interface Storage {
      */
     public Relation getRelation(long srcTopicId, long dstTopicId, String typeId, boolean isDirected);
 
-    public Set<Relation> getRelations(long topicId);
+    /**
+     * Returns the relations between two topics. If no such relation exists an empty list is returned.
+     *
+     * @param   typeId      Relation type filter. Pass <code>null</code> to switch filter off.
+     * @param   isDirected  Direction filter. Pass <code>true</code> if direction matters. In this case the relation
+     *                      is expected to be directed <i>from</i> source topic <i>to</i> destination topic.
+     */
+    public List<Relation> getRelations(long srcTopicId, long dstTopicId, String typeId, boolean isDirected);
 
     public Relation createRelation(String typeId, long srcTopicId, long dstTopicId, Map properties);
 

@@ -419,12 +419,34 @@ public class EmbeddedService implements CoreService {
             tx.success();
         } catch (Throwable e) {
             logger.warning("ROLLBACK!");
-            ex = new RuntimeException("Error while retrieving relation between topic " + srcTopicId +
-                " and topic " + dstTopicId + " (typeId=" + typeId + ", isDirected=" + isDirected + ")", e);
+            ex = new RuntimeException("Error while retrieving relation between topics " + srcTopicId +
+                " and " + dstTopicId + " (typeId=" + typeId + ", isDirected=" + isDirected + ")", e);
         } finally {
             tx.finish();
             if (ex == null) {
                 return relation;
+            } else {
+                throw ex;
+            }
+        }
+    }
+
+    @Override
+    public List<Relation> getRelations(long srcTopicId, long dstTopicId, String typeId, boolean isDirected) {
+        List<Relation> relations = null;
+        RuntimeException ex = null;
+        Transaction tx = storage.beginTx();
+        try {
+            relations = storage.getRelations(srcTopicId, dstTopicId, typeId, isDirected);
+            tx.success();
+        } catch (Throwable e) {
+            logger.warning("ROLLBACK!");
+            ex = new RuntimeException("Error while retrieving relations between topics " + srcTopicId +
+                " and " + dstTopicId + " (typeId=" + typeId + ", isDirected=" + isDirected + ")", e);
+        } finally {
+            tx.finish();
+            if (ex == null) {
+                return relations;
             } else {
                 throw ex;
             }
@@ -439,7 +461,7 @@ public class EmbeddedService implements CoreService {
         try {
             Relation rel = new Relation(-1, typeId, srcTopicId, dstTopicId, properties);
             //
-            relation = storage.createRelation(rel.typeId, rel.srcTopicId, rel.dstTopicId, rel.properties);
+            relation = storage.createRelation(rel.typeId, rel.srcTopicId, rel.dstTopicId, rel.getProperties());
             //
             tx.success();
         } catch (Throwable e) {
