@@ -61,7 +61,11 @@ public class EmbeddedService implements CoreService {
 
     private enum Hook {
 
-        EVOKE_PLUGIN("evokePluginHook"),
+        // Note: this hook is triggered only by the plugin itself
+        // (see {@link de.deepamehta.core.service.Plugin#initPlugin}).
+        // It is declared here for documentation purpose only.
+        POST_INSTALL_PLUGIN("postInstallPluginHook"),
+        ALL_PLUGINS_READY("allPluginsReadyHook"),
 
          PRE_CREATE_TOPIC("preCreateHook",  Topic.class, Map.class),
         POST_CREATE_TOPIC("postCreateHook", Topic.class, Map.class),
@@ -77,15 +81,18 @@ public class EmbeddedService implements CoreService {
         ENRICH_TOPIC("enrichTopicHook", Topic.class, Map.class),
         ENRICH_TOPIC_TYPE("enrichTopicTypeHook", TopicType.class, Map.class),
 
+        // Note: besides regular triggering (see {@link #createTopicType})
+        // this hook is triggered by the plugin itself
+        // (see {@link de.deepamehta.core.service.Plugin#introduceTypesToPlugin}).
         MODIFY_TOPIC_TYPE("modifyTopicTypeHook", TopicType.class),
 
         EXECUTE_COMMAND("executeCommandHook", String.class, Map.class, Map.class);
 
-        private final String name;
+        private final String methodName;
         private final Class[] paramClasses;
 
-        private Hook(String name, Class... paramClasses) {
-            this.name = name;
+        private Hook(String methodName, Class... paramClasses) {
+            this.methodName = methodName;
             this.paramClasses = paramClasses;
         }
     }
@@ -699,14 +706,8 @@ public class EmbeddedService implements CoreService {
     // === Plugins ===
 
     @Override
-    public void registerPlugin(Plugin plugin, boolean isCleanInstall) {
-        //
+    public void registerPlugin(Plugin plugin) {
         plugins.put(plugin.getId(), plugin);
-        //
-        if (isCleanInstall) {
-            evokePlugin(plugin);
-            introduceTypesToPlugin(plugin);
-        }
     }
 
     @Override
@@ -751,13 +752,18 @@ public class EmbeddedService implements CoreService {
     // === Misc ===
 
     @Override
-    public Transaction beginTx() {
-        return storage.beginTx();
+    public void startup() {
+        triggerHook(Hook.ALL_PLUGINS_READY);
     }
 
     @Override
     public void shutdown() {
         closeDB();
+    }
+
+    @Override
+    public Transaction beginTx() {
+        return storage.beginTx();
     }
 
     // ------------------------------------------------------------------------------------------------- Private Methods
@@ -781,15 +787,19 @@ public class EmbeddedService implements CoreService {
 
     // === Plugins ===
 
-    private Set triggerHook(Hook hook, Object... params) throws Exception {
-        Set resultSet = new HashSet();
-        for (Plugin plugin : plugins.values()) {
-            Object result = triggerHook(plugin, hook, params);
-            if (result != null) {
-                resultSet.add(result);
+    private Set triggerHook(Hook hook, Object... params) {
+        try {
+            Set resultSet = new HashSet();
+            for (Plugin plugin : plugins.values()) {
+                Object result = triggerHook(plugin, hook, params);
+                if (result != null) {
+                    resultSet.add(result);
+                }
             }
+            return resultSet;
+        } catch (Throwable e) {
+            throw new RuntimeException("Error while triggering " + hook + " hook");
         }
-        return resultSet;
     }
 
     /**
@@ -798,30 +808,11 @@ public class EmbeddedService implements CoreService {
      * @throws  InvocationTargetException
      */
     private Object triggerHook(Plugin plugin, Hook hook, Object... params) throws Exception {
-        Method hookMethod = plugin.getClass().getMethod(hook.name, hook.paramClasses);
+        Method hookMethod = plugin.getClass().getMethod(hook.methodName, hook.paramClasses);
         return hookMethod.invoke(plugin, params);
     }
 
     // ---
-
-    private void evokePlugin(Plugin plugin) {
-        try {
-            triggerHook(plugin, Hook.EVOKE_PLUGIN);
-        } catch (Exception e) {
-            throw new RuntimeException("Error while invoking EVOKE_PLUGIN hook", e);
-        }
-    }
-
-    private void introduceTypesToPlugin(Plugin plugin) {
-        for (String typeUri : getTopicTypeUris()) {
-            try {
-                triggerHook(plugin, Hook.MODIFY_TOPIC_TYPE, getTopicType(typeUri, null));   // clientContext=null
-            } catch (Exception e) {
-                throw new RuntimeException("Error while invoking MODIFY_TOPIC_TYPE hook for topic type \"" +
-                    typeUri + "\"", e);
-            }
-        }
-    }
 
     private void setPluginMigrationNr(Plugin plugin, int migrationNr) {
         Map properties = new HashMap();

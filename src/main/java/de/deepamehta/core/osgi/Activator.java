@@ -5,6 +5,8 @@ import de.deepamehta.core.impl.EmbeddedService;
 
 import org.osgi.framework.BundleActivator;
 import org.osgi.framework.BundleContext;
+import org.osgi.framework.FrameworkEvent;
+import org.osgi.framework.FrameworkListener;
 import org.osgi.framework.ServiceReference;
 import org.osgi.framework.ServiceRegistration;
 import org.osgi.util.tracker.ServiceTracker;
@@ -13,11 +15,11 @@ import java.util.logging.Logger;
 
 
 
-public class Activator implements BundleActivator {
+public class Activator implements BundleActivator, FrameworkListener {
 
     private Logger logger = Logger.getLogger(getClass().getName());
 
-    private CoreService service;
+    private CoreService dms;
 
 
 
@@ -27,13 +29,16 @@ public class Activator implements BundleActivator {
 
 
 
+    @Override
     public void start(BundleContext context) {
         try {
             logger.info("---------- Starting bundle \"DeepaMehta 3 Core\" ----------");
-            service = new EmbeddedService();
+            dms = new EmbeddedService();
             //
             logger.info("Registering DeepaMehta core service");
-            context.registerService(CoreService.class.getName(), service, null);
+            context.registerService(CoreService.class.getName(), dms, null);
+            //
+            context.addFrameworkListener(this);
         } catch (RuntimeException e) {
             logger.severe("DeepaMehta core service can't be activated. Reason:");
             e.printStackTrace();
@@ -41,10 +46,32 @@ public class Activator implements BundleActivator {
         }
     }
 
+    @Override
     public void stop(BundleContext context) {
         logger.info("---------- Stopping bundle \"DeepaMehta 3 Core\" ----------");
-        if (service != null) {
-            service.shutdown();
+        if (dms != null) {
+            dms.shutdown();
+        }
+    }
+
+
+
+    // ****************************************
+    // *** FrameworkListener Implementation ***
+    // ****************************************
+
+
+
+    @Override
+    public void frameworkEvent(FrameworkEvent event) {
+        switch (event.getType()) {
+        case FrameworkEvent.STARTED:
+            logger.info("########## OSGi framework STARTED ##########");
+            dms.startup();
+            break;
+        case FrameworkEvent.STOPPED:
+            logger.info("########## OSGi framework STOPPED ##########");
+            break;
         }
     }
 }

@@ -181,7 +181,10 @@ public class Plugin implements BundleActivator {
 
 
 
-    public void evokePluginHook() {
+    public void postInstallPluginHook() {
+    }
+
+    public void allPluginsReadyHook() {
     }
 
     // ---
@@ -314,9 +317,9 @@ public class Plugin implements BundleActivator {
 
     // ---
 
-    private void registerPlugin(boolean isCleanInstall) {
+    private void registerPlugin() {
         logger.info("Registering plugin \"" + pluginName + "\" at DeepaMehta core service");
-        dms.registerPlugin(this, isCleanInstall);
+        dms.registerPlugin(this);
         isActivated = true;
     }
 
@@ -408,7 +411,11 @@ public class Plugin implements BundleActivator {
             logger.info("----- Initializing plugin \"" + pluginName + "\" -----");
             boolean isCleanInstall = initPluginTopic();
             runPluginMigrations(isCleanInstall);
-            registerPlugin(isCleanInstall);
+            if (isCleanInstall) {
+                postInstallPluginHook();  // trigger hook
+                introduceTypesToPlugin();
+            }
+            registerPlugin();
             tx.success();
         } catch (Throwable e) {
             logger.warning("ROLLBACK!");
@@ -460,6 +467,13 @@ public class Plugin implements BundleActivator {
             " -- running " + migrationsToRun + " plugin migrations");
         for (int i = migrationNr + 1; i <= requiredMigrationNr; i++) {
             dms.runPluginMigration(this, i, isCleanInstall);
+        }
+    }
+
+    private void introduceTypesToPlugin() {
+        for (String typeUri : dms.getTopicTypeUris()) {
+            // trigger hook
+            modifyTopicTypeHook(dms.getTopicType(typeUri, null));   // clientContext=null
         }
     }
 }

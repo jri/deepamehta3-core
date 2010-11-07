@@ -157,7 +157,7 @@ public interface CoreService {
 
     // === Plugins ===
 
-    public void registerPlugin(Plugin plugin, boolean isCleanInstall);
+    public void registerPlugin(Plugin plugin);
 
     public void unregisterPlugin(String pluginId);
 
@@ -169,7 +169,9 @@ public interface CoreService {
 
     // === Misc ===
 
-    public Transaction beginTx();
+    public void startup();
 
     public void shutdown();
+
+    public Transaction beginTx();
 }
