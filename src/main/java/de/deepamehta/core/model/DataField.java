@@ -13,8 +13,8 @@ import java.util.logging.Logger;
 
 
 /**
- * A data field. Part of the meta-model (like an attribute). A data field is part of a {@link TopicType}.
- * <br><br>
+ * A data field. Part of the meta-model (like a property). A data field is part of a {@link TopicType}.
+ * <p>
  * A data field has a label and a data type.
  * A data field is identified by an URI.
  * Furthermore a data field has a) an indexing mode which controls the indexing of the data field's value, and
@@ -31,6 +31,7 @@ public class DataField {
     private static final String KEY_DATA_TYPE = "data_type";
     private static final String KEY_REF_TOPIC_TYPE_URI = "ref_topic_type_uri";
     private static final String KEY_EDITABLE = "editable";
+    private static final String KEY_VIEWABLE = "viewable";
     private static final String KEY_EDITOR = "editor";
     private static final String KEY_INDEXING_MODE = "indexing_mode";
     private static final String KEY_JS_RENDERER_CLASS = "js_renderer_class";
@@ -111,7 +112,7 @@ public class DataField {
         setDefaults();
     }
 
-    // ---
+    // === Getter ===
 
     public String getUri() {
         return (String) getProperty(KEY_URI);
@@ -123,6 +124,10 @@ public class DataField {
 
     public Boolean getEditable() {
         return (Boolean) getProperty(KEY_EDITABLE);
+    }
+
+    public Boolean getViewable() {
+        return (Boolean) getProperty(KEY_VIEWABLE);
     }
 
     public String getEditor() {
@@ -137,7 +142,7 @@ public class DataField {
         return (String) getProperty(KEY_JS_RENDERER_CLASS);
     }
 
-    // ---
+    // === Setter ===
 
     public void setUri(String uri) {
         setProperty(KEY_URI, uri);
@@ -159,6 +164,10 @@ public class DataField {
 
     public void setEditable(boolean editable) {
         setProperty(KEY_EDITABLE, editable);
+    }
+
+    public void setViewable(boolean viewable) {
+        setProperty(KEY_VIEWABLE, viewable);
     }
 
     // "single line" (default) / "multi line"
@@ -202,6 +211,10 @@ public class DataField {
         //
         if (getEditable() == null) {
             setEditable(true);
+        }
+        //
+        if (getViewable() == null) {
+            setViewable(true);
         }
         //
         if (getEditor() == null) {
