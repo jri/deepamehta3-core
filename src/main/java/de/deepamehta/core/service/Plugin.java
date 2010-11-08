@@ -149,7 +149,7 @@ public class Plugin implements BundleActivator {
             pluginName = (String) pluginBundle.getHeaders().get("Bundle-Name");
             pluginClass = (String) pluginBundle.getHeaders().get("Bundle-Activator");
             //
-            logger.info("---------- Starting DeepaMehta plugin bundle \"" + pluginName + "\" ----------");
+            logger.info("========== Starting DeepaMehta plugin bundle \"" + pluginName + "\" ==========");
             //
             configProperties = readConfigFile();
             pluginPackage = getConfigProperty("pluginPackage", getClass().getPackage().getName());
@@ -167,7 +167,7 @@ public class Plugin implements BundleActivator {
     }
 
     public void stop(BundleContext context) {
-        logger.info("---------- Stopping DeepaMehta plugin bundle \"" + pluginName + "\" ----------");
+        logger.info("========== Stopping DeepaMehta plugin bundle \"" + pluginName + "\" ==========");
         //
         deepamehtaServiceTracker.close();
         httpServiceTracker.close();

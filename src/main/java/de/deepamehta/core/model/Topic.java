@@ -1,5 +1,7 @@
 package de.deepamehta.core.model;
 
+import de.deepamehta.core.util.JSONHelper;
+
 import org.codehaus.jettison.json.JSONObject;
 import org.codehaus.jettison.json.JSONException;
 
@@ -44,6 +46,15 @@ public class Topic {
 
     public Topic(Topic topic) {
         this(topic.id, topic.typeUri, topic.label, topic.properties);
+    }
+
+    public Topic(JSONObject topic) {
+        try {
+            typeUri = topic.getString("type_uri");
+            properties = JSONHelper.toMap(topic.getJSONObject("properties"));
+        } catch (Throwable e) {
+            throw new RuntimeException("Error while parsing " + this, e);
+        }
     }
 
     // -------------------------------------------------------------------------------------------------- Public Methods

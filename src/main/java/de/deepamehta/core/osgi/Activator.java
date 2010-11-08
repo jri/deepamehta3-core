@@ -32,7 +32,7 @@ public class Activator implements BundleActivator, FrameworkListener {
     @Override
     public void start(BundleContext context) {
         try {
-            logger.info("---------- Starting bundle \"DeepaMehta 3 Core\" ----------");
+            logger.info("========== Starting bundle \"DeepaMehta 3 Core\" ==========");
             dms = new EmbeddedService();
             //
             logger.info("Registering DeepaMehta core service");
@@ -48,7 +48,7 @@ public class Activator implements BundleActivator, FrameworkListener {
 
     @Override
     public void stop(BundleContext context) {
-        logger.info("---------- Stopping bundle \"DeepaMehta 3 Core\" ----------");
+        logger.info("========== Stopping bundle \"DeepaMehta 3 Core\" ==========");
         if (dms != null) {
             dms.shutdown();
         }

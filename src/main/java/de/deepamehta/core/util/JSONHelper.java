@@ -91,12 +91,12 @@ public class JSONHelper {
     // ---
 
     /**
-     * Creates types from a JSON formatted input stream.
+     * Creates types and topics from a JSON formatted input stream.
      */
-    public static void readTypesFromFile(InputStream is, String typesFileName, CoreService dms) {
+    public static void readMigrationFile(InputStream is, String migrationFileName, CoreService dms) {
         try {
             InputStreamReader reader = new InputStreamReader(is);
-            logger.info("Reading types from file \"" + typesFileName +
+            logger.info("Reading migration file \"" + migrationFileName +
                 "\" (assumed encoding is \"" + reader.getEncoding() + "\")");
             BufferedReader in = new BufferedReader(reader);
             String line;
@@ -104,17 +104,32 @@ public class JSONHelper {
             while ((line = in.readLine()) != null) {
                 json.append(line);
             }
-            createTypes(json.toString(), dms);
+            //
+            JSONObject o = new JSONObject(json.toString());
+            JSONArray types = o.optJSONArray("topic_types");
+            if (types != null) {
+                createTypes(types, dms);
+            }
+            JSONArray topics = o.optJSONArray("topics");
+            if (topics != null) {
+                createTopics(topics, dms);
+            }
         } catch (Throwable e) {
-            throw new RuntimeException("Error while reading types file \"" + typesFileName + "\"", e);
+            throw new RuntimeException("Error while reading migration file \"" + migrationFileName + "\"", e);
         }
     }
 
-    public static void createTypes(String json, CoreService dms) throws JSONException {
-        JSONArray types = new JSONArray(json);
+    public static void createTypes(JSONArray types, CoreService dms) throws JSONException {
         for (int i = 0; i < types.length(); i++) {
             TopicType topicType = new TopicType(types.getJSONObject(i));
-            dms.createTopicType(topicType.getProperties(), topicType.getDataFields(), null);     // clientContext=null
+            dms.createTopicType(topicType.getProperties(), topicType.getDataFields(), null);    // clientContext=null
+        }
+    }
+
+    public static void createTopics(JSONArray topics, CoreService dms) throws JSONException {
+        for (int i = 0; i < topics.length(); i++) {
+            Topic topic = new Topic(topics.getJSONObject(i));
+            dms.createTopic(topic.typeUri, topic.getProperties(), null);                        // clientContext=null
         }
     }
 

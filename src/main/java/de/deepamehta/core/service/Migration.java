@@ -22,8 +22,8 @@ public abstract class Migration {
 
     // ----------------------------------------------------------------------------------------------- Protected Methods
 
-    protected void readTypesFromFile(String typesFile) {
-        InputStream typesIn = getClass().getResourceAsStream(typesFile);
-        JSONHelper.readTypesFromFile(typesIn, typesFile, dms);
+    protected void readMigrationFile(String migrationFile) {
+        InputStream migrationIn = getClass().getResourceAsStream(migrationFile);
+        JSONHelper.readMigrationFile(migrationIn, migrationFile, dms);
     }
 }

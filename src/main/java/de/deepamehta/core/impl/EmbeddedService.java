@@ -798,7 +798,7 @@ public class EmbeddedService implements CoreService {
             }
             return resultSet;
         } catch (Throwable e) {
-            throw new RuntimeException("Error while triggering " + hook + " hook");
+            throw new RuntimeException("Error while triggering " + hook + " hook", e);
         }
     }
 
@@ -875,11 +875,11 @@ public class EmbeddedService implements CoreService {
             }
             // error checks
             if (!mi.isDeclarative && !mi.isImperative) {
-                throw new RuntimeException("Neither a types file (" + mi.typesFile +
+                throw new RuntimeException("Neither a types file (" + mi.migrationFile +
                     ") nor a migration class (" + mi.migrationClassName + ") is found");
             }
             if (mi.isDeclarative && mi.isImperative) {
-                throw new RuntimeException("Ambiguity: a types file (" + mi.typesFile +
+                throw new RuntimeException("Ambiguity: a types file (" + mi.migrationFile +
                     ") AND a migration class (" + mi.migrationClassName + ") are found");
             }
             // run migration
@@ -888,7 +888,7 @@ public class EmbeddedService implements CoreService {
                 mi.runMode.equals(MigrationRunMode.ALWAYS.name())) {
                 logger.info("Running " + mi.migrationInfo + runInfo);
                 if (mi.isDeclarative) {
-                    JSONHelper.readTypesFromFile(mi.typesIn, mi.typesFile, this);
+                    JSONHelper.readMigrationFile(mi.migrationIn, mi.migrationFile, this);
                 } else {
                     Migration migration = (Migration) mi.migrationClass.newInstance();
                     logger.info("Running " + mi.migrationType + " migration class " + mi.migrationClassName);
@@ -919,8 +919,8 @@ public class EmbeddedService implements CoreService {
         boolean isDeclarative;
         boolean isImperative;
         //
-        String typesFile;           // for declarative migration
-        InputStream typesIn;        // for declarative migration
+        String migrationFile;       // for declarative migration
+        InputStream migrationIn;    // for declarative migration
         //
         String migrationClassName;  // for imperative migration
         Class migrationClass;       // for imperative migration
@@ -932,28 +932,28 @@ public class EmbeddedService implements CoreService {
             try {
                 String configFile = migrationConfigFile(migrationNr);
                 InputStream configIn;
-                typesFile = migrationTypesFile(migrationNr);
+                migrationFile = migrationFile(migrationNr);
                 migrationType = plugin != null ? "plugin" : "core";
                 //
                 if (migrationType.equals("core")) {
                     migrationInfo = "core migration " + migrationNr;
                     logger.info("Preparing " + migrationInfo + " ...");
-                    configIn = getClass().getResourceAsStream(configFile);
-                    typesIn  = getClass().getResourceAsStream(typesFile);
+                    configIn     = getClass().getResourceAsStream(configFile);
+                    migrationIn  = getClass().getResourceAsStream(migrationFile);
                     migrationClassName = coreMigrationClassName(migrationNr);
                     migrationClass = loadClass(migrationClassName);
                 } else {
                     migrationInfo = "migration " + migrationNr + " of plugin \"" + plugin.getName() + "\"";
                     logger.info("Preparing " + migrationInfo + " ...");
-                    configIn = plugin.getResourceAsStream(configFile);
-                    typesIn  = plugin.getResourceAsStream(typesFile);
+                    configIn     = plugin.getResourceAsStream(configFile);
+                    migrationIn  = plugin.getResourceAsStream(migrationFile);
                     migrationClassName = plugin.getMigrationClassName(migrationNr);
                     if (migrationClassName != null) {
                         migrationClass = plugin.loadClass(migrationClassName);
                     }
                 }
                 //
-                isDeclarative = typesIn != null;
+                isDeclarative = migrationIn != null;
                 isImperative = migrationClass != null;
                 //
                 readMigrationConfigFile(configIn, configFile);
@@ -989,8 +989,8 @@ public class EmbeddedService implements CoreService {
 
         // ---
 
-        private String migrationTypesFile(int migrationNr) {
-            return "/migrations/types" + migrationNr + ".json";
+        private String migrationFile(int migrationNr) {
+            return "/migrations/migration" + migrationNr + ".json";
         }
 
         private String migrationConfigFile(int migrationNr) {
