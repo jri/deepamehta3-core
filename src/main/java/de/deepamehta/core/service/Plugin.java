@@ -256,7 +256,7 @@ public class Plugin implements BundleActivator {
      *                      particular the underlying type topic has an ID already. That is, the type is ready for
      *                      e.g. being related to other topics.
      */
-    public void modifyTopicTypeHook(TopicType topicType) {
+    public void modifyTopicTypeHook(TopicType topicType, Map<String, String> clientContext) {
     }
 
     // ---
@@ -473,7 +473,7 @@ public class Plugin implements BundleActivator {
     private void introduceTypesToPlugin() {
         for (String typeUri : dms.getTopicTypeUris()) {
             // trigger hook
-            modifyTopicTypeHook(dms.getTopicType(typeUri, null));   // clientContext=null
+            modifyTopicTypeHook(dms.getTopicType(typeUri, null), null);   // clientContext=null
         }
     }
 }

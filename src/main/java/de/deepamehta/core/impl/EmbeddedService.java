@@ -84,7 +84,7 @@ public class EmbeddedService implements CoreService {
         // Note: besides regular triggering (see {@link #createTopicType})
         // this hook is triggered by the plugin itself
         // (see {@link de.deepamehta.core.service.Plugin#introduceTypesToPlugin}).
-        MODIFY_TOPIC_TYPE("modifyTopicTypeHook", TopicType.class),
+        MODIFY_TOPIC_TYPE("modifyTopicTypeHook", TopicType.class, Map.class),
 
         EXECUTE_COMMAND("executeCommandHook", String.class, Map.class, Map.class);
 
@@ -577,11 +577,9 @@ public class EmbeddedService implements CoreService {
         Transaction tx = storage.beginTx();
         try {
             topicType = storage.createTopicType(properties, dataFields);
-            //
-            triggerHook(Hook.POST_CREATE_TOPIC, topicType, clientContext);
             // Note: the modification must be applied *before* the enrichment.
             // Consider the Access Control plugin: the creator must be set *before* the permissions can be determined.
-            triggerHook(Hook.MODIFY_TOPIC_TYPE, topicType);
+            triggerHook(Hook.MODIFY_TOPIC_TYPE, topicType, clientContext);
             triggerHook(Hook.ENRICH_TOPIC_TYPE, topicType, clientContext);
             //
             tx.success();
@@ -729,26 +727,10 @@ public class EmbeddedService implements CoreService {
         return plugins.get(pluginId);
     }
 
-    /**
-     * Runs a plugin migration in a transaction.
-     */
     @Override
     public void runPluginMigration(Plugin plugin, int migrationNr, boolean isCleanInstall) {
-        RuntimeException ex = null;
-        Transaction tx = storage.beginTx();
-        try {
-            runMigration(migrationNr, plugin, isCleanInstall);
-            setPluginMigrationNr(plugin, migrationNr);
-            //
-            tx.success();
-        } catch (Throwable e) {
-            logger.warning("ROLLBACK!");
-            ex = new RuntimeException("Error while running migration " + migrationNr +
-                " of plugin \"" + plugin.getName() + "\"", e);
-        } finally {
-            tx.finish();
-            if (ex != null) throw ex;
-        }
+        runMigration(migrationNr, plugin, isCleanInstall);
+        setPluginMigrationNr(plugin, migrationNr);
     }
 
     // === Misc ===
