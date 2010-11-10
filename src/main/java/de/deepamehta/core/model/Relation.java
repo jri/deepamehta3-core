@@ -49,7 +49,13 @@ public class Relation {
     // -------------------------------------------------------------------------------------------------- Public Methods
 
     public Object getProperty(String key) {
-        return properties.get(key);
+        Object value = properties.get(key);
+        if (value == null) {
+            throw new RuntimeException("Property \"" + key + "\" of " + this + " is not initialized. " +
+                "Remember: relations obtained by getRelatedTopics() provide no properties. " +
+                "Use the providePropertiesHook() to initialize the properties you need.");
+        }
+        return value;
     }
 
     public Map<String, Object> getProperties() {
@@ -60,6 +66,14 @@ public class Relation {
 
     public void setProperty(String key, Object value) {
         properties.put(key, value);
+    }
+
+    /**
+     * Sets various properties at once.
+     * Same as consecutive {@link setProperty} calls.
+     */
+    public void setProperties(Map<String, Object> properties) {
+        this.properties.putAll(properties);
     }
 
     // ---

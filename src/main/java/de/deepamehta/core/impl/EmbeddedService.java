@@ -577,6 +577,8 @@ public class EmbeddedService implements CoreService {
         Transaction tx = storage.beginTx();
         try {
             topicType = storage.createTopicType(properties, dataFields);
+            //
+            triggerHook(Hook.POST_CREATE_TOPIC, topicType, clientContext);
             // Note: the modification must be applied *before* the enrichment.
             // Consider the Access Control plugin: the creator must be set *before* the permissions can be determined.
             triggerHook(Hook.MODIFY_TOPIC_TYPE, topicType);
@@ -798,7 +800,7 @@ public class EmbeddedService implements CoreService {
             }
             return resultSet;
         } catch (Throwable e) {
-            throw new RuntimeException("Error while triggering " + hook + " hook", e);
+            throw new RuntimeException("Error while triggering hook " + hook, e);
         }
     }
 
