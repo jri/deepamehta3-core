@@ -92,20 +92,15 @@ public class JSONHelper {
 
     /**
      * Creates types and topics from a JSON formatted input stream.
+     *
+     * @param   migrationFileName   The origin migration file. Used for logging only.
      */
     public static void readMigrationFile(InputStream is, String migrationFileName, CoreService dms) {
         try {
-            InputStreamReader reader = new InputStreamReader(is);
-            logger.info("Reading migration file \"" + migrationFileName +
-                "\" (assumed encoding is \"" + reader.getEncoding() + "\")");
-            BufferedReader in = new BufferedReader(reader);
-            String line;
-            StringBuilder json = new StringBuilder();
-            while ((line = in.readLine()) != null) {
-                json.append(line);
-            }
+            logger.info("Reading migration file \"" + migrationFileName + "\"");
+            String fileContent = JavaUtils.readTextFile(is);
             //
-            JSONObject o = new JSONObject(json.toString());
+            JSONObject o = new JSONObject(fileContent);
             JSONArray types = o.optJSONArray("topic_types");
             if (types != null) {
                 createTypes(types, dms);
