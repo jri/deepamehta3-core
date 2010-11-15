@@ -24,6 +24,7 @@
                     <instructions>
                         <Export-Package>
                             de.deepamehta.core.model,
+                            de.deepamehta.core.osgi,
                             de.deepamehta.core.service,
                             de.deepamehta.core.util
                         </Export-Package>

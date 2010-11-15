@@ -17,9 +17,15 @@ import java.util.logging.Logger;
 
 public class Activator implements BundleActivator, FrameworkListener {
 
+    // ------------------------------------------------------------------------------------------------- Class Variables
+
+    private static CoreService dms;
+
+    // ---------------------------------------------------------------------------------------------- Instance Variables
+
     private Logger logger = Logger.getLogger(getClass().getName());
 
-    private CoreService dms;
+    // -------------------------------------------------------------------------------------------------- Public Methods
 
 
 
@@ -73,5 +79,21 @@ public class Activator implements BundleActivator, FrameworkListener {
             logger.info("########## OSGi framework STOPPED ##########");
             break;
         }
+    }
+
+
+
+    // **************
+    // *** Helper ***
+    // **************
+
+
+
+    public static CoreService getService() {
+        // CoreService dms = (CoreService) deepamehtaServiceTracker.getService();
+        if (dms == null) {
+            throw new RuntimeException("DeepaMehta core service is currently not available");
+        }
+        return dms;
     }
 }

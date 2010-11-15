@@ -51,12 +51,13 @@ public class Plugin implements BundleActivator {
     private Bundle pluginBundle;
     private Topic  pluginTopic;                 // Represents this plugin in DB. Holds plugin migration number.
 
-    protected Properties configProperties;      // Read from file "plugin.properties"
     private boolean isActivated;
 
-    private ServiceTracker deepamehtaServiceTracker;
-    protected static CoreService dms;
+    protected Properties configProperties;      // Read from file "plugin.properties"
 
+    protected CoreService dms;
+
+    private ServiceTracker deepamehtaServiceTracker;
     private ServiceTracker httpServiceTracker;
     private HttpService httpService;
 
@@ -126,7 +127,7 @@ public class Plugin implements BundleActivator {
     }
 
     // FIXME: drop method and make dms protected instead?
-    public static CoreService getService() {
+    public CoreService getService() {
         // CoreService dms = (CoreService) deepamehtaServiceTracker.getService();
         if (dms == null) {
             throw new RuntimeException("DeepaMehta core service is currently not available");
@@ -142,6 +143,7 @@ public class Plugin implements BundleActivator {
 
 
 
+    @Override
     public void start(BundleContext context) {
         try {
             pluginBundle = context.getBundle();
@@ -166,6 +168,7 @@ public class Plugin implements BundleActivator {
         }
     }
 
+    @Override
     public void stop(BundleContext context) {
         logger.info("========== Stopping DeepaMehta plugin bundle \"" + pluginName + "\" ==========");
         //
@@ -264,6 +267,8 @@ public class Plugin implements BundleActivator {
     public JSONObject executeCommandHook(String command, Map params, Map<String, String> clientContext) {
         return null;
     }
+
+
 
     // ------------------------------------------------------------------------------------------------- Private Methods
 
