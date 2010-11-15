@@ -724,7 +724,11 @@ public class EmbeddedService implements CoreService {
 
     @Override
     public Plugin getPlugin(String pluginId) {
-        return plugins.get(pluginId);
+        Plugin plugin = plugins.get(pluginId);
+        if (plugin == null) {
+            throw new RuntimeException("Plugin \"" + pluginId + "\" is unknown.");
+        }
+        return plugin;
     }
 
     @Override

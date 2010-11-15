@@ -30,6 +30,7 @@ public class DataField {
     private static final String KEY_LABEL = "label";
     private static final String KEY_DATA_TYPE = "data_type";
     private static final String KEY_REF_TOPIC_TYPE_URI = "ref_topic_type_uri";
+    private static final String KEY_REF_RELATION_TYPE_ID = "ref_relation_type_id";
     private static final String KEY_EDITABLE = "editable";
     private static final String KEY_VIEWABLE = "viewable";
     private static final String KEY_EDITOR = "editor";
@@ -158,8 +159,13 @@ public class DataField {
     }
 
     // used for dataType="reference" fields
-    public void setRelatedTypeUri(String relatedTypeUri) {
-        setProperty(KEY_REF_TOPIC_TYPE_URI, relatedTypeUri);
+    public void setRefTopicTypeUri(String refTopicTypeUri) {
+        setProperty(KEY_REF_TOPIC_TYPE_URI, refTopicTypeUri);
+    }
+
+    // used for dataType="reference" fields
+    public void setRefRelationTypeId(String refRelationTypeId) {
+        setProperty(KEY_REF_RELATION_TYPE_ID, refRelationTypeId);
     }
 
     public void setEditable(boolean editable) {
