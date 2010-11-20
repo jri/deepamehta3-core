@@ -54,17 +54,29 @@ public class DataField {
 
     // ---------------------------------------------------------------------------------------------------- Constructors
 
+    /**
+     * Typically used by the plugin author to extend a topic type by a data field
+     * (imperative migration or modifyTopicTypeHook()).
+     */
     public DataField(String label, String dataType) {
         setLabel(label);
         setDataType(dataType);
         setDefaults();
     }
 
+    /**
+     * Used when a data field is read from the database.
+     * Invoked from Neo4jDataField() constructor.
+     */
     public DataField(Map properties) {
         this.properties = properties;
         setDefaults();
     }
 
+    /**
+     * Used when a data field is constructed from a JSON file (declarative migration) or
+     * through the wire (addDataField() and updateDataField() core service calls).
+     */
     public DataField(JSONObject dataField) {
         try {
             JSONHelper.toMap(dataField, properties);

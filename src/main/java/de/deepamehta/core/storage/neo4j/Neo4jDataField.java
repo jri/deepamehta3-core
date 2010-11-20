@@ -27,11 +27,25 @@ class Neo4jDataField extends DataField {
     // ---------------------------------------------------------------------------------------------------- Constructors
 
     /**
-     * Constructs a data field from components read from the database.
+     * Used when a data field is read from the database.
      */
     Neo4jDataField(Map properties, Node node) {
-        super(properties);
+        // super(properties);
+        //
+        // Note: we can't invoke super() because the super constructor invokes methods which are overridden here
+        // (setProperty() indirectly via setDefaults()). This would cause NullPointerException because this object's
+        // instance variables ("logger" and "node") are only initialized *after* super() has returned.
+        //
+        // From www.artima.com/designtechniques/initialization.html: Although <init> methods are called in an order
+        // starting from the object's class and proceeding up the inheritance path to class Object, instance variables
+        // are initialized in the reverse order. Instance variables are initialized in an order starting from class
+        // Object and proceeding down the inheritance path to the object's class.
+        //
+        // We rely on DataField's setDefaults() facility for the migration of database content when DataField got an
+        // additional property.
+        //
         this.node = node;
+        setProperties(new DataField(properties).getProperties());   // this workaround looks crude
     }
 
     /**
