@@ -38,8 +38,7 @@ class Neo4jDataField extends DataField {
         //
         // From www.artima.com/designtechniques/initialization.html: Although <init> methods are called in an order
         // starting from the object's class and proceeding up the inheritance path to class Object, instance variables
-        // are initialized in the reverse order. Instance variables are initialized in an order starting from class
-        // Object and proceeding down the inheritance path to the object's class.
+        // are initialized in the reverse order.
         //
         // We rely on DataField's setDefaults() facility for the migration of database content when DataField got an
         // additional property.

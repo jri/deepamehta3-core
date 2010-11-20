@@ -61,7 +61,7 @@ public class DataField {
     public DataField(String label, String dataType) {
         setLabel(label);
         setDataType(dataType);
-        setDefaults();
+        initDefaults();
     }
 
     /**
@@ -70,7 +70,7 @@ public class DataField {
      */
     public DataField(Map properties) {
         this.properties = properties;
-        setDefaults();
+        initDefaults();
     }
 
     /**
@@ -80,7 +80,7 @@ public class DataField {
     public DataField(JSONObject dataField) {
         try {
             JSONHelper.toMap(dataField, properties);
-            setDefaults();
+            initDefaults();
         } catch (Throwable e) {
             throw new RuntimeException("Error while parsing data field " + this, e);
         }
@@ -122,7 +122,6 @@ public class DataField {
         }
         //
         this.properties = properties;   // FIXME: use putAll() instead?
-        setDefaults();
     }
 
     // === Getter ===
@@ -222,7 +221,7 @@ public class DataField {
 
     // ------------------------------------------------------------------------------------------------- Private Methods
 
-    private void setDefaults() {
+    private void initDefaults() {
         if (getDataType() == null) {
             setDataType("text");
         }
