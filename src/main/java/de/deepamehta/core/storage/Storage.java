@@ -34,6 +34,8 @@ public interface Storage {
      */
     public Topic getTopic(String key, Object value);
 
+    public Topic getTopic(String typeUri, String key, Object value);
+
     /**
      * Returns a property value of a topic, or <code>null</code> if the topic doesn't have such a property.
      */

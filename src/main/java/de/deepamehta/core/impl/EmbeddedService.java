@@ -186,6 +186,28 @@ public class EmbeddedService implements CoreService {
     }
 
     @Override
+    public Topic getTopic(String typeUri, String key, Object value) {
+        Topic topic = null;
+        RuntimeException ex = null;
+        Transaction tx = storage.beginTx();
+        try {
+            topic = storage.getTopic(typeUri, key, value);
+            tx.success();   
+        } catch (Throwable e) {
+            logger.warning("ROLLBACK!");
+            ex = new RuntimeException("Error while retrieving topic (typeUri=\"" + typeUri + "\", " +
+                "\"" + key + "\"=" + value + ")", e);
+        } finally {
+            tx.finish();
+            if (ex == null) {
+                return topic;
+            } else {
+                throw ex;
+            }
+        }
+    }
+
+    @Override
     public Object getTopicProperty(long topicId, String key) {
         Object value = null;
         RuntimeException ex = null;

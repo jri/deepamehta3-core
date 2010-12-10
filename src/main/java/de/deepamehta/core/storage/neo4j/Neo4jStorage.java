@@ -106,6 +106,25 @@ public class Neo4jStorage implements Storage {
     }
 
     @Override
+    public Topic getTopic(String typeUri, String key, Object value) {
+        logger.info("Getting node (typeUri=" + typeUri + ", " + key + "=" + value + ")");
+        IndexHits<Node> nodes = fulltextIndex.getNodesExactMatch(key, value);
+        Node resultNode = null;
+        // apply type filter
+        for (Node node : nodes) {
+            if (getTypeUri(node).equals(typeUri)) {
+                if (resultNode != null) {
+                    throw new RuntimeException("Ambiguity: more than one topic matches " +
+                        "(typeUri=" + typeUri + ", " + key + "=" + value + ")");
+                }
+                resultNode = node;
+            }
+        }
+        //
+        return resultNode != null ? buildTopic(resultNode, true) : null;
+    }
+
+    @Override
     public Object getTopicProperty(long topicId, String key) {
         return graphDb.getNodeById(topicId).getProperty(key, null);
     }
@@ -242,7 +261,8 @@ public class Neo4jStorage implements Storage {
             }
             // ambiguity?
             if (relationship != null) {
-                throw new RuntimeException("Ambiguity: there are more than one relations");
+                throw new RuntimeException("Ambiguity: more than one relation matches (srcTopicId=" + srcTopicId +
+                    ", dstTopicId=" + dstTopicId + ", typeId=" + typeId + ", isDirected=" + isDirected + ")");
             }
             //
             relationship = rel;

@@ -49,6 +49,8 @@ public interface CoreService {
      */
     public Topic getTopic(String key, Object value);
 
+    public Topic getTopic(String typeUri, String key, Object value);
+
     public Object getTopicProperty(long topicId, String key);
 
     public List<Topic> getTopics(String typeUri);
