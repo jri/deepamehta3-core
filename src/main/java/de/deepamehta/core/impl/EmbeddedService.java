@@ -129,6 +129,14 @@ public class EmbeddedService implements CoreService {
             }
         }
     }
+    
+    public EmbeddedService(boolean b) {
+        // TODO inject storage, instead of inner init
+    }
+    
+    public void setStorage(Storage storage) {
+        this.storage = storage;
+    }
 
     // -------------------------------------------------------------------------------------------------- Public Methods
 
@@ -209,22 +217,16 @@ public class EmbeddedService implements CoreService {
 
     @Override
     public Object getTopicProperty(long topicId, String key) {
-        Object value = null;
-        RuntimeException ex = null;
         Transaction tx = storage.beginTx();
         try {
-            value = storage.getTopicProperty(topicId, key);
+            Object value = storage.getTopicProperty(topicId, key);
             tx.success();   
+            return value;
         } catch (Throwable e) {
             logger.warning("ROLLBACK!");
-            ex = new RuntimeException("Property \"" + key + "\" of topic " + topicId + " can't be retrieved", e);
+            throw new RuntimeException("Property \"" + key + "\" of topic " + topicId + " can't be retrieved", e);
         } finally {
             tx.finish();
-            if (ex == null) {
-                return value;
-            } else {
-                throw ex;
-            }
         }
     }
 
