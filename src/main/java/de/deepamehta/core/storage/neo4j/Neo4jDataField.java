@@ -84,7 +84,7 @@ class Neo4jDataField extends DataField {
             node.setProperty(key, newValue);
         }
         if (log.length() > 0) {
-            logger.warning("Overriding properties of data field " + this + ":" + log);
+            logger.warning("### Overriding properties of data field " + this + ":" + log);
         }
     }
 
