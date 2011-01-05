@@ -108,7 +108,7 @@ public class EmbeddedService implements CoreService {
     public EmbeddedService() {
         try {
             openDB();
-        } catch (Throwable e) {
+        } catch (Exception e) {
             throw new RuntimeException("Database can't be opened", e);
         }
         //
@@ -117,8 +117,8 @@ public class EmbeddedService implements CoreService {
         try {
             boolean isCleanInstall = initDB();
             runCoreMigrations(isCleanInstall);
-            tx.success();   
-        } catch (Throwable e) {
+            tx.success();
+        } catch (Exception e) {
             logger.warning("ROLLBACK!");
             ex = new RuntimeException("Database can't be initialized", e);
         } finally {
@@ -129,11 +129,11 @@ public class EmbeddedService implements CoreService {
             }
         }
     }
-    
+
     public EmbeddedService(boolean b) {
         // TODO inject storage, instead of inner init
     }
-    
+
     public void setStorage(Storage storage) {
         this.storage = storage;
     }
@@ -152,66 +152,48 @@ public class EmbeddedService implements CoreService {
 
     @Override
     public Topic getTopic(long id, Map clientContext) {
-        Topic topic = null;
-        RuntimeException ex = null;
         Transaction tx = storage.beginTx();
         try {
-            topic = storage.getTopic(id);
+            Topic topic = storage.getTopic(id);
             triggerHook(Hook.ENRICH_TOPIC, topic, clientContext);
-            tx.success();   
-        } catch (Throwable e) {
+            tx.success();
+            return topic;
+        } catch (Exception e) {
             logger.warning("ROLLBACK!");
-            ex = new RuntimeException("Topic " + id + " can't be retrieved", e);
+            throw new RuntimeException("Topic " + id + " can't be retrieved", e);
         } finally {
             tx.finish();
-            if (ex == null) {
-                return topic;
-            } else {
-                throw ex;
-            }
         }
     }
 
     @Override
     public Topic getTopic(String key, Object value) {
-        Topic topic = null;
-        RuntimeException ex = null;
         Transaction tx = storage.beginTx();
         try {
-            topic = storage.getTopic(key, value);
-            tx.success();   
-        } catch (Throwable e) {
+            Topic topic = storage.getTopic(key, value);
+            tx.success();
+            return topic;
+        } catch (Exception e) {
             logger.warning("ROLLBACK!");
-            ex = new RuntimeException("Error while retrieving topic by property (\"" + key + "\"=" + value + ")", e);
+            throw new RuntimeException("Error while retrieving topic by property (\"" + key + "\"=" + value + ")", e);
         } finally {
             tx.finish();
-            if (ex == null) {
-                return topic;
-            } else {
-                throw ex;
-            }
         }
     }
 
     @Override
     public Topic getTopic(String typeUri, String key, Object value) {
-        Topic topic = null;
-        RuntimeException ex = null;
         Transaction tx = storage.beginTx();
         try {
-            topic = storage.getTopic(typeUri, key, value);
-            tx.success();   
-        } catch (Throwable e) {
+            Topic topic = storage.getTopic(typeUri, key, value);
+            tx.success();
+            return topic;
+        } catch (Exception e) {
             logger.warning("ROLLBACK!");
-            ex = new RuntimeException("Error while retrieving topic (typeUri=\"" + typeUri + "\", " +
+            throw new RuntimeException("Error while retrieving topic (typeUri=\"" + typeUri + "\", " +
                 "\"" + key + "\"=" + value + ")", e);
         } finally {
             tx.finish();
-            if (ex == null) {
-                return topic;
-            } else {
-                throw ex;
-            }
         }
     }
 
@@ -220,9 +202,9 @@ public class EmbeddedService implements CoreService {
         Transaction tx = storage.beginTx();
         try {
             Object value = storage.getTopicProperty(topicId, key);
-            tx.success();   
+            tx.success();
             return value;
-        } catch (Throwable e) {
+        } catch (Exception e) {
             logger.warning("ROLLBACK!");
             throw new RuntimeException("Property \"" + key + "\" of topic " + topicId + " can't be retrieved", e);
         } finally {
@@ -232,48 +214,36 @@ public class EmbeddedService implements CoreService {
 
     @Override
     public List<Topic> getTopics(String typeUri) {
-        List<Topic> topics = null;
-        RuntimeException ex = null;
         Transaction tx = storage.beginTx();
         try {
-            topics = storage.getTopics(typeUri);
+            List<Topic> topics = storage.getTopics(typeUri);
             //
             for (Topic topic : topics) {
                 triggerHook(Hook.PROVIDE_TOPIC_PROPERTIES, topic);
             }
             //
             tx.success();
-        } catch (Throwable e) {
+            return topics;
+        } catch (Exception e) {
             logger.warning("ROLLBACK!");
-            ex = new RuntimeException("Topics of type \"" + typeUri + "\" can't be retrieved", e);
+            throw new RuntimeException("Topics of type \"" + typeUri + "\" can't be retrieved", e);
         } finally {
             tx.finish();
-            if (ex == null) {
-                return topics;
-            } else {
-                throw ex;
-            }
         }
     }
 
     @Override
     public List<Topic> getTopics(String key, Object value) {
-        List<Topic> topics = null;
-        RuntimeException ex = null;
         Transaction tx = storage.beginTx();
         try {
-            topics = storage.getTopics(key, value);
-            tx.success();   
-        } catch (Throwable e) {
+            List<Topic> topics = storage.getTopics(key, value);
+            tx.success();
+            return topics;
+        } catch (Exception e) {
             logger.warning("ROLLBACK!");
-            ex = new RuntimeException("Error while retrieving topics by property (\"" + key + "\"=" + value + ")", e);
+            throw new RuntimeException("Error while retrieving topics by property (\"" + key + "\"=" + value + ")", e);
         } finally {
             tx.finish();
-            if (ex == null) {
-                return topics;
-            } else {
-                throw ex;
-            }
         }
     }
 
@@ -290,11 +260,10 @@ public class EmbeddedService implements CoreService {
             throw new IllegalArgumentException("includeRelTypes and excludeRelTypes can not be used at the same time");
         }
         //
-        List<RelatedTopic> relTopics = null;
-        RuntimeException ex = null;
         Transaction tx = storage.beginTx();
         try {
-            relTopics = storage.getRelatedTopics(topicId, includeTopicTypes, includeRelTypes, excludeRelTypes);
+            List<RelatedTopic> relTopics = storage.getRelatedTopics(topicId, includeTopicTypes, includeRelTypes,
+                                                                                                excludeRelTypes);
             //
             for (RelatedTopic relTopic : relTopics) {
                 triggerHook(Hook.PROVIDE_TOPIC_PROPERTIES, relTopic.getTopic());
@@ -302,74 +271,56 @@ public class EmbeddedService implements CoreService {
             }
             //
             tx.success();
-        } catch (Throwable e) {
+            return relTopics;
+        } catch (Exception e) {
             logger.warning("ROLLBACK!");
-            ex = new RuntimeException("Related topics of topic " + topicId + " can't be retrieved", e);
+            throw new RuntimeException("Related topics of topic " + topicId + " can't be retrieved", e);
         } finally {
             tx.finish();
-            if (ex == null) {
-                return relTopics;
-            } else {
-                throw ex;
-            }
         }
     }
 
     @Override
     public List<Topic> searchTopics(String searchTerm, String fieldUri, boolean wholeWord, Map clientContext) {
-        List<Topic> searchResult = null;
-        RuntimeException ex = null;
         Transaction tx = storage.beginTx();
         try {
-            searchResult = storage.searchTopics(searchTerm, fieldUri, wholeWord);
-            //
-            tx.success();   
-        } catch (Throwable e) {
+            List<Topic> searchResult = storage.searchTopics(searchTerm, fieldUri, wholeWord);
+            tx.success();
+            return searchResult;
+        } catch (Exception e) {
             logger.warning("ROLLBACK!");
-            ex = new RuntimeException("Error while searching topics (searchTerm=" + searchTerm + ", fieldUri=" +
+            throw new RuntimeException("Error while searching topics (searchTerm=" + searchTerm + ", fieldUri=" +
                 fieldUri + ", wholeWord=" + wholeWord + ", clientContext=" + clientContext + ")", e);
         } finally {
             tx.finish();
-            if (ex == null) {
-                return searchResult;
-            } else {
-                throw ex;
-            }
         }
     }
 
     @Override
     public Topic createTopic(String typeUri, Map properties, Map clientContext) {
-        Topic topic = null;
-        RuntimeException ex = null;
         Transaction tx = storage.beginTx();
         try {
             Topic t = new Topic(-1, typeUri, null, initProperties(properties, typeUri));
             //
             triggerHook(Hook.PRE_CREATE_TOPIC, t, clientContext);
             //
-            topic = storage.createTopic(t.typeUri, t.getProperties());
+            Topic topic = storage.createTopic(t.typeUri, t.getProperties());
             //
             triggerHook(Hook.POST_CREATE_TOPIC, topic, clientContext);
             triggerHook(Hook.ENRICH_TOPIC, topic, clientContext);
             //
             tx.success();
-        } catch (Throwable e) {
+            return topic;
+        } catch (Exception e) {
             logger.warning("ROLLBACK!");
-            ex = new RuntimeException("Topic of type \"" + typeUri + "\" can't be created", e);
+            throw new RuntimeException("Topic of type \"" + typeUri + "\" can't be created", e);
         } finally {
             tx.finish();
-            if (ex == null) {
-                return topic;
-            } else {
-                throw ex;
-            }
         }
     }
 
     @Override
     public void setTopicProperties(long id, Map properties) {
-        RuntimeException ex = null;
         Transaction tx = storage.beginTx();
         try {
             Topic topic = getTopic(id, null);   // clientContext=null
@@ -382,21 +333,17 @@ public class EmbeddedService implements CoreService {
             topic.setProperties(properties);
             triggerHook(Hook.POST_UPDATE_TOPIC, topic, oldProperties);
             //
-            tx.success();   
-        } catch (Throwable e) {
+            tx.success();
+        } catch (Exception e) {
             logger.warning("ROLLBACK!");
-            ex = new RuntimeException("Properties of topic " + id + " can't be set (" + properties + ")", e);
+            throw new RuntimeException("Properties of topic " + id + " can't be set (" + properties + ")", e);
         } finally {
             tx.finish();
-            if (ex != null) {
-                throw ex;
-            }
         }
     }
 
     @Override
     public void deleteTopic(long id) {
-        RuntimeException ex = null;
         Transaction tx = storage.beginTx();
         try {
             // delete all the topic's relationships
@@ -406,14 +353,11 @@ public class EmbeddedService implements CoreService {
             //
             storage.deleteTopic(id);
             tx.success();
-        } catch (Throwable e) {
+        } catch (Exception e) {
             logger.warning("ROLLBACK!");
-            ex = new RuntimeException("Topic " + id + " can't be deleted", e);
+            throw new RuntimeException("Topic " + id + " can't be deleted", e);
         } finally {
             tx.finish();
-            if (ex != null) {
-                throw ex;
-            }
         }
     }
 
@@ -421,131 +365,94 @@ public class EmbeddedService implements CoreService {
 
     @Override
     public Relation getRelation(long id) {
-        Relation relation = null;
-        RuntimeException ex = null;
         Transaction tx = storage.beginTx();
         try {
-            relation = storage.getRelation(id);
-            tx.success();   
-        } catch (Throwable e) {
+            Relation relation = storage.getRelation(id);
+            tx.success();
+            return relation;
+        } catch (Exception e) {
             logger.warning("ROLLBACK!");
-            ex = new RuntimeException("Relation " + id + " can't be retrieved", e);
+            throw new RuntimeException("Relation " + id + " can't be retrieved", e);
         } finally {
             tx.finish();
-            if (ex == null) {
-                return relation;
-            } else {
-                throw ex;
-            }
         }
     }
 
     @Override
     public Relation getRelation(long srcTopicId, long dstTopicId, String typeId, boolean isDirected) {
-        Relation relation = null;
-        RuntimeException ex = null;
         Transaction tx = storage.beginTx();
         try {
-            relation = storage.getRelation(srcTopicId, dstTopicId, typeId, isDirected);
+            Relation relation = storage.getRelation(srcTopicId, dstTopicId, typeId, isDirected);
             tx.success();
-        } catch (Throwable e) {
+            return relation;
+        } catch (Exception e) {
             logger.warning("ROLLBACK!");
-            ex = new RuntimeException("Error while retrieving relation between topics " + srcTopicId +
+            throw new RuntimeException("Error while retrieving relation between topics " + srcTopicId +
                 " and " + dstTopicId + " (typeId=" + typeId + ", isDirected=" + isDirected + ")", e);
         } finally {
             tx.finish();
-            if (ex == null) {
-                return relation;
-            } else {
-                throw ex;
-            }
         }
     }
 
     @Override
     public List<Relation> getRelations(long srcTopicId, long dstTopicId, String typeId, boolean isDirected) {
-        List<Relation> relations = null;
-        RuntimeException ex = null;
         Transaction tx = storage.beginTx();
         try {
-            relations = storage.getRelations(srcTopicId, dstTopicId, typeId, isDirected);
+            List<Relation> relations = storage.getRelations(srcTopicId, dstTopicId, typeId, isDirected);
             tx.success();
-        } catch (Throwable e) {
+            return relations;
+        } catch (Exception e) {
             logger.warning("ROLLBACK!");
-            ex = new RuntimeException("Error while retrieving relations between topics " + srcTopicId +
+            throw new RuntimeException("Error while retrieving relations between topics " + srcTopicId +
                 " and " + dstTopicId + " (typeId=" + typeId + ", isDirected=" + isDirected + ")", e);
         } finally {
             tx.finish();
-            if (ex == null) {
-                return relations;
-            } else {
-                throw ex;
-            }
         }
     }
 
     @Override
     public Relation createRelation(String typeId, long srcTopicId, long dstTopicId, Map properties) {
-        Relation relation = null;
-        RuntimeException ex = null;
         Transaction tx = storage.beginTx();
         try {
             Relation rel = new Relation(-1, typeId, srcTopicId, dstTopicId, properties);
-            //
-            relation = storage.createRelation(rel.typeId, rel.srcTopicId, rel.dstTopicId, rel.getProperties());
-            //
+            Relation relation = storage.createRelation(rel.typeId, rel.srcTopicId, rel.dstTopicId, rel.getProperties());
             tx.success();
-        } catch (Throwable e) {
+            return relation;
+        } catch (Exception e) {
             logger.warning("ROLLBACK!");
-            ex = new RuntimeException("Relation of type \"" + typeId + "\" can't be created", e);
+            throw new RuntimeException("Relation of type \"" + typeId + "\" can't be created", e);
         } finally {
             tx.finish();
-            if (ex == null) {
-                return relation;
-            } else {
-                throw ex;
-            }
         }
     }
 
     @Override
     public void setRelationProperties(long id, Map properties) {
-        RuntimeException ex = null;
         Transaction tx = storage.beginTx();
         try {
             storage.setRelationProperties(id, properties);
-            tx.success();   
-        } catch (Throwable e) {
+            tx.success();
+        } catch (Exception e) {
             logger.warning("ROLLBACK!");
-            ex = new RuntimeException("Properties of relation " + id + " can't be set (" + properties + ")", e);
+            throw new RuntimeException("Properties of relation " + id + " can't be set (" + properties + ")", e);
         } finally {
             tx.finish();
-            if (ex != null) {
-                throw ex;
-            }
         }
     }
 
     @Override
     public void deleteRelation(long id) {
-        RuntimeException ex = null;
         Transaction tx = storage.beginTx();
         try {
             triggerHook(Hook.PRE_DELETE_RELATION, id);
-            //
             storage.deleteRelation(id);
-            //
             triggerHook(Hook.POST_DELETE_RELATION, id);
-            //
             tx.success();
-        } catch (Throwable e) {
+        } catch (Exception e) {
             logger.warning("ROLLBACK!");
-            ex = new RuntimeException("Relation " + id + " can't be deleted", e);
+            throw new RuntimeException("Relation " + id + " can't be deleted", e);
         } finally {
             tx.finish();
-            if (ex != null) {
-                throw ex;
-            }
         }
     }
 
@@ -553,146 +460,112 @@ public class EmbeddedService implements CoreService {
 
     @Override
     public Set<String> getTopicTypeUris() {
-        Set typeUris = null;
-        RuntimeException ex = null;
         Transaction tx = storage.beginTx();
         try {
-            typeUris = storage.getTopicTypeUris();
+            Set typeUris = storage.getTopicTypeUris();
             tx.success();
-        } catch (Throwable e) {
+            return typeUris;
+        } catch (Exception e) {
             logger.warning("ROLLBACK!");
-            ex = new RuntimeException("Topic type URIs can't be retrieved", e);
+            throw new RuntimeException("Topic type URIs can't be retrieved", e);
         } finally {
             tx.finish();
-            if (ex == null) {
-                return typeUris;
-            } else {
-                throw ex;
-            }
         }
     }
 
     @Override
     public TopicType getTopicType(String typeUri, Map clientContext) {
-        TopicType topicType = null;
-        RuntimeException ex = null;
         Transaction tx = storage.beginTx();
         try {
-            topicType = storage.getTopicType(typeUri);
+            TopicType topicType = storage.getTopicType(typeUri);
             triggerHook(Hook.ENRICH_TOPIC_TYPE, topicType, clientContext);
             tx.success();
-        } catch (Throwable e) {
+            return topicType;
+        } catch (Exception e) {
             logger.warning("ROLLBACK!");
-            ex = new RuntimeException("Topic type \"" + typeUri + "\" can't be retrieved", e);
+            throw new RuntimeException("Topic type \"" + typeUri + "\" can't be retrieved", e);
         } finally {
             tx.finish();
-            if (ex == null) {
-                return topicType;
-            } else {
-                throw ex;
-            }
         }
     }
 
     @Override
     public TopicType createTopicType(Map properties, List dataFields, Map clientContext) {
-        TopicType topicType = null;
-        RuntimeException ex = null;
         Transaction tx = storage.beginTx();
         try {
-            topicType = storage.createTopicType(properties, dataFields);
+            TopicType topicType = storage.createTopicType(properties, dataFields);
             // Note: the modification must be applied *before* the enrichment.
             // Consider the Access Control plugin: the creator must be set *before* the permissions can be determined.
             triggerHook(Hook.MODIFY_TOPIC_TYPE, topicType, clientContext);
             triggerHook(Hook.ENRICH_TOPIC_TYPE, topicType, clientContext);
             //
             tx.success();
-        } catch (Throwable e) {
+            return topicType;
+        } catch (Exception e) {
             logger.warning("ROLLBACK!");
-            ex = new RuntimeException("Topic type \"" +
+            throw new RuntimeException("Topic type \"" +
                 properties.get("de/deepamehta/core/property/TypeURI") + "\" can't be created", e);
         } finally {
             tx.finish();
-            if (ex == null) {
-                return topicType;
-            } else {
-                throw ex;
-            }
         }
     }
 
     @Override
     public void addDataField(String typeUri, DataField dataField) {
-        RuntimeException ex = null;
         Transaction tx = storage.beginTx();
         try {
             storage.addDataField(typeUri, dataField);
             tx.success();
-        } catch (Throwable e) {
+        } catch (Exception e) {
             logger.warning("ROLLBACK!");
-            ex = new RuntimeException("Data field \"" + dataField.getUri() + "\" can't be added to topic type \"" +
+            throw new RuntimeException("Data field \"" + dataField.getUri() + "\" can't be added to topic type \"" +
                 typeUri + "\"", e);
         } finally {
             tx.finish();
-            if (ex != null) {
-                throw ex;
-            }
         }
     }
 
     @Override
     public void updateDataField(String typeUri, DataField dataField) {
-        RuntimeException ex = null;
         Transaction tx = storage.beginTx();
         try {
             storage.updateDataField(typeUri, dataField);
             tx.success();
-        } catch (Throwable e) {
+        } catch (Exception e) {
             logger.warning("ROLLBACK!");
-            ex = new RuntimeException("Data field \"" + dataField.getUri() + "\" of topic type \"" +
+            throw new RuntimeException("Data field \"" + dataField.getUri() + "\" of topic type \"" +
                 typeUri + "\" can't be updated", e);
         } finally {
             tx.finish();
-            if (ex != null) {
-                throw ex;
-            }
         }
     }
 
     @Override
     public void removeDataField(String typeUri, String fieldUri) {
-        RuntimeException ex = null;
         Transaction tx = storage.beginTx();
         try {
             storage.removeDataField(typeUri, fieldUri);
             tx.success();
-        } catch (Throwable e) {
+        } catch (Exception e) {
             logger.warning("ROLLBACK!");
-            ex = new RuntimeException("Data field \"" + fieldUri + "\" of topic type \"" +
+            throw new RuntimeException("Data field \"" + fieldUri + "\" of topic type \"" +
                 typeUri + "\" can't be removed", e);
         } finally {
             tx.finish();
-            if (ex != null) {
-                throw ex;
-            }
         }
     }
 
     @Override
     public void setDataFieldOrder(String typeUri, List fieldUris) {
-        RuntimeException ex = null;
         Transaction tx = storage.beginTx();
         try {
             storage.setDataFieldOrder(typeUri, fieldUris);
             tx.success();
-        } catch (Throwable e) {
+        } catch (Exception e) {
             logger.warning("ROLLBACK!");
-            ex = new RuntimeException("Data field order of topic type \"" + typeUri + "\" can't be set", e);
+            throw new RuntimeException("Data field order of topic type \"" + typeUri + "\" can't be set", e);
         } finally {
             tx.finish();
-            if (ex != null) {
-                throw ex;
-            }
         }
     }
 
@@ -700,30 +573,23 @@ public class EmbeddedService implements CoreService {
 
     @Override
     public JSONObject executeCommand(String command, Map params, Map clientContext) {
-        JSONObject result = null;
-        RuntimeException ex = null;
         Transaction tx = storage.beginTx();
         try {
             Iterator<JSONObject> i = triggerHook(Hook.EXECUTE_COMMAND, command, params, clientContext).iterator();
             if (!i.hasNext()) {
                 throw new RuntimeException("Command is not handled by any plugin");
             }
-            result = i.next();
+            JSONObject result = i.next();
             if (i.hasNext()) {
                 throw new RuntimeException("Ambiguity: more than one plugin returned a result");
             }
-            //
             tx.success();
-        } catch (Throwable e) {
+            return result;
+        } catch (Exception e) {
             logger.warning("ROLLBACK!");
-            ex = new RuntimeException("Command \"" + command + "\" can't be executed " + params, e);
+            throw new RuntimeException("Command \"" + command + "\" can't be executed " + params, e);
         } finally {
             tx.finish();
-            if (ex == null) {
-                return result;
-            } else {
-                throw ex;
-            }
         }
     }
 
@@ -809,7 +675,7 @@ public class EmbeddedService implements CoreService {
                 }
             }
             return resultSet;
-        } catch (Throwable e) {
+        } catch (Exception e) {
             throw new RuntimeException("Error while triggering hook " + hook, e);
         }
     }
@@ -912,7 +778,7 @@ public class EmbeddedService implements CoreService {
                 logger.info("Do NOT run " + mi.migrationInfo + runInfo);
             }
             logger.info("Updating migration number (" + migrationNr + ")");
-        } catch (Throwable e) {
+        } catch (Exception e) {
             throw new RuntimeException("Error while running " + mi.migrationInfo, e);
         }
     }
@@ -938,7 +804,7 @@ public class EmbeddedService implements CoreService {
         Class migrationClass;       // for imperative migration
         //
         boolean success;            // error occurred?
-        Throwable exception;        // the error
+        Exception exception;        // the error
 
         MigrationInfo(int migrationNr, Plugin plugin) {
             try {
@@ -971,7 +837,7 @@ public class EmbeddedService implements CoreService {
                 readMigrationConfigFile(configIn, configFile);
                 //
                 success = true;
-            } catch (Throwable e) {
+            } catch (Exception e) {
                 exception = e;
             }
         }
